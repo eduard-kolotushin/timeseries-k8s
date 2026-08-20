@@ -1,3 +1,4 @@
 charts/timeseries/charts/
 *.tgz
+.helm/
 .idea/

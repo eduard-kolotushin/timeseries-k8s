@@ -34,7 +34,7 @@ Plugin implementation, worker implementation, Compose sandbox, Prometheus, grafa
 
 ## Workflow
 
-- `make lint` — `helm dependency update`, `helm lint`, `helm template`
+- `make lint` — `make helm-deps`, `helm lint`, `helm template`
 - `make docker-grafana` / `make docker-baselines` — local image builds
 - Bump Dockerfile `PLUGIN_REF` / `BASELINES_REF` when siblings change
 - Full local stack (Kafka + Druid + this chart): sibling `timeseries-grafana-sandbox` `make helm-up`

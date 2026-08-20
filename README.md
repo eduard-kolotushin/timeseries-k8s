@@ -30,11 +30,13 @@ make docker-baselines
 ## Install
 
 ```bash
-helm dependency update charts/timeseries
+make helm-deps
 helm install timeseries charts/timeseries \
   --set baselines.druidBroker=http://druid-broker.druid.svc:8082 \
   --set baselines.kafkaBrokers=kafka.kafka.svc:9092
 ```
+
+`make helm-deps` fetches the Grafana subchart using an isolated Helm repository config (not the global `helm repo list`). Helm 4 otherwise fails if a leftover repo such as Bitnami has a missing cache index.
 
 Optional Druid datasource in Grafana (see `examples/druid-values.yaml`):
 
