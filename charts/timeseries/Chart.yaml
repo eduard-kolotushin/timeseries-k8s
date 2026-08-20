@@ -1,6 +1,6 @@
 apiVersion: v2
 name: timeseries
-description: Grafana with timeseries-forecast overlay and optional baselines worker
+description: Grafana with timeseries-forecast overlay and optional baselines worker sidecar
 type: application
 version: 0.1.0
 appVersion: "0.1.0"

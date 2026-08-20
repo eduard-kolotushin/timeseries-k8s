@@ -1,0 +1,22 @@
+{{- if and .Values.grafana.enabled .Values.baselines.enabled }}
+{{- $_ := required "baselines.druidBroker is required when baselines.enabled is true" .Values.baselines.druidBroker }}
+{{- $_ := required "baselines.kafkaBrokers is required when baselines.enabled is true" .Values.baselines.kafkaBrokers }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-baselines-env
+  labels:
+    {{- include "timeseries.labels" . | nindent 4 }}
+    app.kubernetes.io/component: baselines
+data:
+  DRUID_BROKER: {{ .Values.baselines.druidBroker | quote }}
+  DRUID_DATASOURCE: {{ .Values.baselines.druidDatasource | quote }}
+  KAFKA_BROKERS: {{ .Values.baselines.kafkaBrokers | quote }}
+  KAFKA_TOPIC: {{ .Values.baselines.kafkaTopic | quote }}
+  LOOKBACK: {{ .Values.baselines.lookback | quote }}
+  AHEAD_MINUTES: {{ .Values.baselines.aheadMinutes | quote }}
+  INTERVAL: {{ .Values.baselines.interval | quote }}
+  {{- if .Values.baselines.calendar }}
+  CALENDAR: {{ .Values.baselines.calendar | quote }}
+  {{- end }}
+{{- end }}

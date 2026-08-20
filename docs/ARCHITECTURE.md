@@ -16,9 +16,9 @@ Plugin and worker git pins are `ARG` defaults in the Dockerfiles (`PLUGIN_REF=78
 
 Grafana (custom image) queries existing Druid and runs `POST /api/plugins/eduardkolotushin-forecast-app/resources/forecast` in-process.
 
-The baselines worker reads existing Druid SQL, fits minute-of-week, and writes to an existing Kafka baselines topic.
+The baselines worker runs as a sidecar in the Grafana pod. It reads existing Druid SQL, fits minute-of-week, and writes to an existing Kafka baselines topic.
 
-Kafka and Druid are not in this chart.
+Kafka and Druid are not in this chart. The sibling sandbox can install them with `make helm-up`.
 
 ## Grafana image
 
@@ -33,10 +33,12 @@ The Grafana Helm subchart must set `grafana.ini.paths.plugins` to `/opt/grafana-
 
 ## Worker image
 
-`CGO_ENABLED=0` build of `./cmd/baselines`, distroless static nonroot, entrypoint `/baselines`. Config is process env (see `timeseries-baselines` ARCHITECTURE). No HTTP port; Kubernetes restarts the container if the process exits.
+`CGO_ENABLED=0` build of `./cmd/baselines`, distroless static nonroot, entrypoint `/baselines`. Config is process env (see `timeseries-baselines` ARCHITECTURE). No HTTP port. Kubernetes restarts the Grafana pod if the sidecar exits.
 
 ## Helm
 
 - Subchart `grafana` from `https://grafana-community.github.io/helm-charts`, condition `grafana.enabled`.
-- Parent templates: forecast-app ConfigMap, optional Druid datasource ConfigMap, worker Deployment.
-- Worker `replicaCount` is 1. Do not scale out; duplicate ticks republish the same lead point.
+- Parent templates: forecast-app ConfigMap, optional Druid datasource ConfigMap, baselines env ConfigMap.
+- Worker container: Grafana `extraContainers` (tpl’d with the release name so it can `envFrom` `{{ .Release.Name }}-baselines-env`).
+- One Grafana replica. Do not scale out; duplicate ticks republish the same lead point.
+- The worker cannot run if Grafana is disabled.

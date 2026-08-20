@@ -22,6 +22,7 @@ Kubernetes images and Helm for the forecast Grafana plugin and the baselines wor
 - Stay within v1 unless `docs/INTENTIONS.md` is updated first
 - linux/amd64 only
 - Unsigned plugin load via `allow_loading_unsigned_plugins`, not `GF_DEFAULT_APP_MODE=development`
+- Worker is a Grafana sidecar, not a separate Deployment
 
 ## v1 in scope
 
@@ -29,11 +30,12 @@ Grafana-with-plugin image, worker image, umbrella Helm chart assuming existing K
 
 ## v1 out of scope
 
-Plugin implementation, worker implementation, Compose sandbox, Prometheus, grafana.com signing, arm64, worker HTTP probes.
+Plugin implementation, worker implementation, Compose sandbox, Prometheus, grafana.com signing, arm64, worker HTTP probes, Kafka/Druid in this chart.
 
 ## Workflow
 
 - `make lint` — `helm dependency update`, `helm lint`, `helm template`
 - `make docker-grafana` / `make docker-baselines` — local image builds
 - Bump Dockerfile `PLUGIN_REF` / `BASELINES_REF` when siblings change
+- Full local stack (Kafka + Druid + this chart): sibling `timeseries-grafana-sandbox` `make helm-up`
 - GitHub Actions on `main`: helm lint/template; on `v*` tags: push both images to GHCR

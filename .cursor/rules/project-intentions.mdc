@@ -9,7 +9,7 @@ Read [docs/INTENTIONS.md](docs/INTENTIONS.md) before expanding scope.
 
 ## Stay in v1
 
-Allowed: Grafana OSS image with the unsigned forecast plugin baked in, baselines worker image, umbrella Helm chart, existing Kafka/Druid URLs in values.
+Allowed: Grafana OSS image with the unsigned forecast plugin baked in, baselines worker image, umbrella Helm chart with the worker as a Grafana sidecar, existing Kafka/Druid URLs in values.
 
 Do **not** add without updating INTENTIONS first:
 
@@ -20,3 +20,4 @@ Do **not** add without updating INTENTIONS first:
 - Grafana.com signing
 - arm64
 - Worker HTTP health endpoint
+- A separate worker Deployment

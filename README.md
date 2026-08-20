@@ -2,16 +2,16 @@
 
 Helm chart and container images to run the [`timeseries-grafana`](https://github.com/eduard-kolotushin/timeseries-grafana) forecast plugin and the [`timeseries-baselines`](https://github.com/eduard-kolotushin/timeseries-baselines) worker on Kubernetes.
 
-This repo does not contain plugin or worker source. Local Compose remains [`timeseries-grafana-sandbox`](../timeseries-grafana-sandbox). Open all siblings with [`../timeseries-workspace.code-workspace`](../timeseries-workspace.code-workspace).
+This repo does not contain plugin or worker source. Local Compose and a Helm path that installs Kafka + Druid + this chart live in [`timeseries-grafana-sandbox`](../timeseries-grafana-sandbox). Open all siblings with [`../timeseries-workspace.code-workspace`](../timeseries-workspace.code-workspace).
 
 See [docs/INTENTIONS.md](docs/INTENTIONS.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## What it deploys
 
 - Grafana 13.1 with the unsigned forecast app/panel and the Druid datasource plugin baked in
-- Optional baselines worker (minute-of-week fit to Kafka)
+- Optional baselines worker sidecar in the Grafana pod (minute-of-week fit to Kafka)
 
-Kafka and Druid must already exist in the cluster. Pass their URLs in values.
+Kafka and Druid must already exist in the cluster. Pass their URLs in values. A full local stack (Kafka + Druid + this chart) is sibling [`timeseries-grafana-sandbox`](../timeseries-grafana-sandbox) `make helm-up`.
 
 ## Images
 
@@ -54,7 +54,7 @@ Port-forward Grafana:
 kubectl port-forward svc/timeseries-grafana 3000:80
 ```
 
-Disable the worker with `--set baselines.enabled=false`. Disable Grafana with `--set grafana.enabled=false`.
+Disable the worker with `--set baselines.enabled=false --set grafana.extraContainers=""`. Disable Grafana with `--set grafana.enabled=false` (the sidecar cannot run without Grafana).
 
 ## Check the chart
 
