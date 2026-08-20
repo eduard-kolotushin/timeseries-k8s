@@ -1,0 +1,3 @@
+charts/timeseries/charts/
+*.tgz
+.idea/

@@ -1,0 +1,19 @@
+timeseries-k8s {{ .Chart.Version }}
+
+When the baselines worker is enabled, set broker URLs:
+
+  --set baselines.druidBroker=http://druid-broker.druid.svc:8082
+  --set baselines.kafkaBrokers=kafka.kafka.svc:9092
+
+Grafana admin password (Helm default secret):
+
+  kubectl get secret {{ .Release.Name }}-grafana -o jsonpath="{.data.admin-password}" | base64 -d
+
+Port-forward Grafana:
+
+  kubectl port-forward svc/{{ .Release.Name }}-grafana 3000:80
+
+Images must exist before pods can start. Publish both images to GHCR by pushing a v* git tag, or build locally:
+
+  make docker-grafana
+  make docker-baselines

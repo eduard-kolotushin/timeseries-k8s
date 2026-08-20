@@ -1,0 +1,39 @@
+# AGENTS.md
+
+Operating manual for agents working in this repository.
+
+## Project
+
+Kubernetes images and Helm for the forecast Grafana plugin and the baselines worker. Not plugin source, not worker source, not a Compose sandbox.
+
+- **Folder:** `timeseries-k8s`
+- **Chart:** `charts/timeseries`
+- **Images:** `ghcr.io/eduard-kolotushin/timeseries-grafana`, `ghcr.io/eduard-kolotushin/timeseries-baselines`
+
+## Read first
+
+1. [docs/INTENTIONS.md](docs/INTENTIONS.md)
+2. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+
+## Hard constraints
+
+- Do not copy plugin or worker source into this repo; Dockerfiles fetch pinned sibling git refs
+- Do not add Kafka, Druid, TestData, or sandbox dashboards
+- Stay within v1 unless `docs/INTENTIONS.md` is updated first
+- linux/amd64 only
+- Unsigned plugin load via `allow_loading_unsigned_plugins`, not `GF_DEFAULT_APP_MODE=development`
+
+## v1 in scope
+
+Grafana-with-plugin image, worker image, umbrella Helm chart assuming existing Kafka and Druid.
+
+## v1 out of scope
+
+Plugin implementation, worker implementation, Compose sandbox, Prometheus, grafana.com signing, arm64, worker HTTP probes.
+
+## Workflow
+
+- `make lint` — `helm dependency update`, `helm lint`, `helm template`
+- `make docker-grafana` / `make docker-baselines` — local image builds
+- Bump Dockerfile `PLUGIN_REF` / `BASELINES_REF` when siblings change
+- GitHub Actions on `main`: helm lint/template; on `v*` tags: push both images to GHCR

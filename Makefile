@@ -1,0 +1,25 @@
+CHART := charts/timeseries
+GRAFANA_IMAGE := ghcr.io/eduard-kolotushin/timeseries-grafana:0.1.0
+BASELINES_IMAGE := ghcr.io/eduard-kolotushin/timeseries-baselines:0.1.0
+
+.PHONY: all help lint helm-deps docker-grafana docker-baselines
+
+all: lint
+
+help:
+	@echo "make lint             helm dependency update, lint, template"
+	@echo "make docker-grafana   build Grafana-with-plugin image"
+	@echo "make docker-baselines build worker image"
+
+helm-deps:
+	helm dependency update $(CHART)
+
+lint: helm-deps
+	helm lint $(CHART) -f ci/values.yaml
+	helm template test $(CHART) -f ci/values.yaml >/dev/null
+
+docker-grafana:
+	docker build -f docker/grafana/Dockerfile -t $(GRAFANA_IMAGE) docker/grafana
+
+docker-baselines:
+	docker build -f docker/baselines/Dockerfile -t $(BASELINES_IMAGE) docker/baselines

@@ -1,0 +1,4 @@
+druidUrl: http://druid-router.druid.svc:8888
+baselines:
+  druidBroker: http://druid-broker.druid.svc:8082
+  kafkaBrokers: kafka.kafka.svc:9092

@@ -1,0 +1,22 @@
+---
+description: Keep Helm/images free of plugin source, Kafka, and Druid
+alwaysApply: true
+---
+
+# Project intentions
+
+Read [docs/INTENTIONS.md](docs/INTENTIONS.md) before expanding scope.
+
+## Stay in v1
+
+Allowed: Grafana OSS image with the unsigned forecast plugin baked in, baselines worker image, umbrella Helm chart, existing Kafka/Druid URLs in values.
+
+Do **not** add without updating INTENTIONS first:
+
+- Plugin or worker source
+- Kafka, ZooKeeper, or Druid
+- Compose sandbox / TestData / demo dashboards
+- Prometheus
+- Grafana.com signing
+- arm64
+- Worker HTTP health endpoint

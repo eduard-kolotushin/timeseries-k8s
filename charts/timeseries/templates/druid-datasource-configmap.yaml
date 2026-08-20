@@ -1,0 +1,18 @@
+{{- if and .Values.grafana.enabled .Values.druidUrl }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-druid-datasource
+  labels:
+    {{- include "timeseries.labels" . | nindent 4 }}
+data:
+  druid.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Druid
+        type: grafadruid-druid-datasource
+        uid: druid
+        access: proxy
+        jsonData:
+          connection.url: {{ .Values.druidUrl | quote }}
+{{- end }}

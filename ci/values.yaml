@@ -1,0 +1,3 @@
+baselines:
+  druidBroker: http://druid-broker.example.svc:8082
+  kafkaBrokers: kafka.example.svc:9092

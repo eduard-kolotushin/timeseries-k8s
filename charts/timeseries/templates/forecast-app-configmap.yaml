@@ -1,0 +1,15 @@
+{{- if .Values.grafana.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-forecast-app
+  labels:
+    {{- include "timeseries.labels" . | nindent 4 }}
+data:
+  apps.yaml: |
+    apiVersion: 1
+    apps:
+      - type: eduardkolotushin-forecast-app
+        org_id: 1
+        disabled: false
+{{- end }}

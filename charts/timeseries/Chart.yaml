@@ -1,0 +1,12 @@
+apiVersion: v2
+name: timeseries
+description: Grafana with timeseries-forecast overlay and optional baselines worker
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.25.0-0"
+dependencies:
+  - name: grafana
+    version: 12.11.1
+    repository: https://grafana-community.github.io/helm-charts
+    condition: grafana.enabled
