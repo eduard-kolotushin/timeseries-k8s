@@ -1,0 +1,17 @@
+{{- if and .Values.grafana.enabled .Values.prometheusUrl }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-prometheus-datasource
+  labels:
+    {{- include "timeseries.labels" . | nindent 4 }}
+data:
+  prometheus.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        uid: prometheus
+        access: proxy
+        url: {{ .Values.prometheusUrl | quote }}
+{{- end }}

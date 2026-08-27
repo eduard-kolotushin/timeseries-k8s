@@ -24,4 +24,10 @@ Images must exist before pods can start. Publish both images to GHCR by pushing 
   make docker-grafana
   make docker-baselines
 
-A full Kafka + Druid + this chart stack is sibling timeseries-grafana-sandbox `make helm-up`.
+A full Kafka + Druid + Prometheus + OpenSearch + overlay Postgres + this chart stack is sibling timeseries-grafana-sandbox `make helm-up`.
+
+Optional datasource URLs (this chart does not run those servers):
+
+  --set prometheusUrl=http://prometheus.prometheus.svc:9090
+  --set opensearchUrl=http://opensearch.opensearch.svc:9200
+  --set postgres.url=overlay-postgres.overlay-postgres.svc:5432

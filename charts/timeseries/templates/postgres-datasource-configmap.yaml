@@ -1,0 +1,25 @@
+{{- if and .Values.grafana.enabled .Values.postgres.url }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-postgres-datasource
+  labels:
+    {{- include "timeseries.labels" . | nindent 4 }}
+data:
+  postgres.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Overlay Postgres
+        type: grafana-postgresql-datasource
+        uid: overlay-postgres
+        access: proxy
+        url: {{ .Values.postgres.url | quote }}
+        user: {{ .Values.postgres.user | quote }}
+        jsonData:
+          database: {{ .Values.postgres.database | quote }}
+          sslmode: disable
+          postgresVersion: 1700
+          timescaledb: false
+        secureJsonData:
+          password: {{ .Values.postgres.password | quote }}
+{{- end }}

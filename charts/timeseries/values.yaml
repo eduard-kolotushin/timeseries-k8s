@@ -1,5 +1,13 @@
-# Parent-only. When set, a ConfigMap provisions grafadruid-druid-datasource (uid druid).
+# Parent-only. When set, ConfigMaps provision Grafana datasources (optional mounts).
 druidUrl: ""
+prometheusUrl: ""
+opensearchUrl: ""
+opensearchDatabase: overlay-metrics
+postgres:
+  url: ""
+  database: ""
+  user: ""
+  password: ""
 
 grafana:
   enabled: true
@@ -27,6 +35,24 @@ grafana:
       mountPath: /etc/grafana/provisioning/datasources/druid.yaml
       subPath: druid.yaml
       configMap: '{{ .Release.Name }}-druid-datasource'
+      readOnly: true
+      optional: true
+    - name: prometheus-datasource
+      mountPath: /etc/grafana/provisioning/datasources/prometheus.yaml
+      subPath: prometheus.yaml
+      configMap: '{{ .Release.Name }}-prometheus-datasource'
+      readOnly: true
+      optional: true
+    - name: opensearch-datasource
+      mountPath: /etc/grafana/provisioning/datasources/opensearch.yaml
+      subPath: opensearch.yaml
+      configMap: '{{ .Release.Name }}-opensearch-datasource'
+      readOnly: true
+      optional: true
+    - name: postgres-datasource
+      mountPath: /etc/grafana/provisioning/datasources/postgres.yaml
+      subPath: postgres.yaml
+      configMap: '{{ .Release.Name }}-postgres-datasource'
       readOnly: true
       optional: true
   datasources: {}

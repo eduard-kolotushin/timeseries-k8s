@@ -1,0 +1,24 @@
+{{- if and .Values.grafana.enabled .Values.opensearchUrl }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-opensearch-datasource
+  labels:
+    {{- include "timeseries.labels" . | nindent 4 }}
+data:
+  opensearch.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: OpenSearch
+        type: grafana-opensearch-datasource
+        uid: opensearch
+        access: proxy
+        url: {{ .Values.opensearchUrl | quote }}
+        jsonData:
+          database: {{ .Values.opensearchDatabase | default "overlay-metrics" | quote }}
+          flavor: opensearch
+          version: "2.18.0"
+          timeField: "@timestamp"
+          pplEnabled: true
+          timeInterval: 1m
+{{- end }}

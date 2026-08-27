@@ -8,10 +8,10 @@ See [docs/INTENTIONS.md](docs/INTENTIONS.md) and [docs/ARCHITECTURE.md](docs/ARC
 
 ## What it deploys
 
-- Grafana 13.1 with the unsigned forecast app/panel and the Druid datasource plugin baked in
+- Grafana 13.1 with the unsigned forecast app/panel, the Druid datasource plugin, and the OpenSearch datasource plugin baked in
 - Optional baselines worker sidecar in the Grafana pod (minute-of-week fit to Kafka)
 
-Kafka and Druid must already exist in the cluster. Pass their URLs in values. A full local stack (Kafka + Druid + this chart) is sibling [`timeseries-grafana-sandbox`](../timeseries-grafana-sandbox) `make helm-up`.
+Kafka, Druid, Prometheus, OpenSearch, and Postgres must already exist if you want those datasources. Pass URLs in values. This chart does not run those servers. A full local stack is sibling [`timeseries-grafana-sandbox`](../timeseries-grafana-sandbox) `make helm-up`.
 
 ## Images
 
@@ -38,7 +38,7 @@ helm install timeseries charts/timeseries \
 
 `make helm-deps` fetches the Grafana subchart using an isolated Helm repository config (not the global `helm repo list`). Helm 4 otherwise fails if a leftover repo such as Bitnami has a missing cache index.
 
-Optional Druid datasource in Grafana (see `examples/druid-values.yaml`):
+Optional Druid datasource in Grafana (see `examples/druid-values.yaml`). Prometheus, OpenSearch, and overlay Postgres URLs use the same pattern (`prometheusUrl`, `opensearchUrl`, `postgres`):
 
 ```bash
 helm install timeseries charts/timeseries -f examples/druid-values.yaml
