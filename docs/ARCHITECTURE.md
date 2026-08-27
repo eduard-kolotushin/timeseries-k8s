@@ -10,7 +10,7 @@
 | `charts/timeseries/charts/` | Grafana community subchart (fetched, gitignored) |
 | `ci/values.yaml` | Dummy broker URLs for `helm lint` / `helm template` |
 
-Plugin and worker git pins are `ARG` defaults in the Dockerfiles (`PLUGIN_REF=0231c2d5ea22cdff4e42558ca2509ebe8175ddc6`, `BASELINES_REF=ee71550923faceb4d019a56cd2be065f607cdf6f`).
+Plugin and worker git pins are `ARG` defaults in the Dockerfiles (`PLUGIN_REF=549d4ac43bb2540f59a8d86ecb5439312c98f35f`, `BASELINES_REF=ee71550923faceb4d019a56cd2be065f607cdf6f`).
 
 ## Cluster data flow
 
@@ -18,7 +18,7 @@ Grafana (custom image) queries existing datasources and runs `POST /api/plugins/
 
 The baselines worker runs as a sidecar in the Grafana pod. It reads existing Druid SQL, fits minute-of-week, and writes to an existing Kafka baselines topic.
 
-Kafka, Druid, Prometheus, OpenSearch, and Postgres are not in this chart. Optional datasource URLs (`druidUrl`, `prometheusUrl`, `opensearchUrl`, `postgres`) provision Grafana datasources when set. The sibling sandbox can install the servers with `make helm-up`.
+Kafka, Druid, Prometheus, OpenSearch, and Postgres are not in this chart. Optional datasource URLs (`druidUrl`, `prometheusUrl`, `opensearchUrl`, `postgres`) provision Grafana datasources when set. The same `postgres` values provision `FORECAST_STORE_*` and app jsonData for fitted snapshots. The sibling sandbox can install the servers with `make helm-up`.
 
 ## Grafana image
 
@@ -40,7 +40,7 @@ The Grafana Helm subchart must set `grafana.ini.paths.plugins` to `/opt/grafana-
 ## Helm
 
 - Subchart `grafana` from `https://grafana-community.github.io/helm-charts`, condition `grafana.enabled`.
-- Parent templates: forecast-app ConfigMap, optional Druid / Prometheus / OpenSearch / Postgres datasource ConfigMaps (`optional: true` mounts), baselines env ConfigMap.
+- Parent templates: forecast-app ConfigMap, forecast-store env ConfigMap (`FORECAST_STORE_*`, Grafana `envFromConfigMaps`), optional Druid / Prometheus / OpenSearch / Postgres datasource ConfigMaps (`optional: true` mounts), baselines env ConfigMap.
 - Worker container: Grafana `extraContainers` (tpl’d with the release name so it can `envFrom` `{{ .Release.Name }}-baselines-env`).
 - One Grafana replica. Do not scale out; duplicate ticks republish the same lead point.
 - The worker cannot run if Grafana is disabled.

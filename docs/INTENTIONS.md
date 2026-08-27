@@ -17,7 +17,7 @@ Deploy the forecast Grafana plugin and the minute-of-week baselines worker on an
 | Images | linux/amd64; GHCR `ghcr.io/eduard-kolotushin/timeseries-grafana` and `…/timeseries-baselines` |
 | Plugin load | `GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS` (not development mode, not grafana.com signing) |
 | Auth | Grafana Helm admin secret; no anonymous Admin (sandbox values may override) |
-| Source pins | Dockerfiles clone sibling git (plugin `0231c2d5ea22cdff4e42558ca2509ebe8175ddc6`, worker `ee71550923faceb4d019a56cd2be065f607cdf6f`) |
+| Source pins | Dockerfiles clone sibling git (plugin `549d4ac43bb2540f59a8d86ecb5439312c98f35f`, worker `ee71550923faceb4d019a56cd2be065f607cdf6f`) |
 
 ## v1 must-have
 
@@ -25,7 +25,7 @@ Deploy the forecast Grafana plugin and the minute-of-week baselines worker on an
 - Bake `grafana-opensearch-datasource` next to Druid (Prometheus and Postgres are Grafana core)
 - Plugins live under `/opt/grafana-plugins` so a Grafana PVC does not hide them
 - Optional Druid datasource URL in values
-- Optional `prometheusUrl` / `opensearchUrl` / `postgres` connection values (empty default), same pattern as `druidUrl`
+- Optional `prometheusUrl` / `opensearchUrl` / `postgres` connection values (empty default), same pattern as `druidUrl`. When `postgres.url` is set, those values also provision the forecast app snapshot store (pgx, schema `forecast`); this chart still does not run a Postgres server
 - Enable the forecast app via provisioning
 - Optional baselines worker **sidecar** in the Grafana pod (env `DRUID_*` / `KAFKA_*` as in `timeseries-baselines`)
 - One Grafana replica (therefore one worker); do not scale out

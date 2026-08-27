@@ -26,7 +26,7 @@ Kubernetes images and Helm for the forecast Grafana plugin and the baselines wor
 
 ## v1 in scope
 
-Grafana-with-plugin image (forecast + Druid + OpenSearch datasource plugins), worker image, umbrella Helm chart assuming existing Kafka/Druid and optional Prom/OS/PG URLs.
+Grafana-with-plugin image (forecast + Druid + OpenSearch datasource plugins), worker image, umbrella Helm chart assuming existing Kafka/Druid and optional Prom/OS/PG URLs. `postgres` values also provision `FORECAST_STORE_*` for fitted snapshots.
 
 ## v1 out of scope
 

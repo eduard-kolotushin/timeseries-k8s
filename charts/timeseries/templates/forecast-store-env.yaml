@@ -1,0 +1,21 @@
+{{- if .Values.grafana.enabled }}
+{{- $url := .Values.postgres.url | default "" }}
+{{- $host := regexReplaceAll ":\\d+$" $url "" }}
+{{- $port := "5432" }}
+{{- if contains ":" $url }}
+  {{- $port = regexFind "\\d+$" $url }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-forecast-store
+  labels:
+    {{- include "timeseries.labels" . | nindent 4 }}
+data:
+  FORECAST_STORE_HOST: {{ $host | quote }}
+  FORECAST_STORE_PORT: {{ $port | quote }}
+  FORECAST_STORE_DATABASE: {{ .Values.postgres.database | default "" | quote }}
+  FORECAST_STORE_USER: {{ .Values.postgres.user | default "" | quote }}
+  FORECAST_STORE_PASSWORD: {{ .Values.postgres.password | default "" | quote }}
+  FORECAST_STORE_SSLMODE: "disable"
+{{- end }}
