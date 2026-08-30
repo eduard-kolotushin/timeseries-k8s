@@ -21,11 +21,11 @@ Deploy the forecast Grafana plugin and the minute-of-week baselines worker on an
 
 ## v1 must-have
 
-- Grafana with `eduardkolotushin-forecast-app` / `eduardkolotushin-forecast-panel` and `grafadruid-druid-datasource` in the image
+- Grafana with `eduardkolotushin-forecast-app` / `eduardkolotushin-forecast-panel` / `eduardkolotushin-forecast-datasource` and `grafadruid-druid-datasource` in the image
 - Bake `grafana-opensearch-datasource` next to Druid (Prometheus and Postgres are Grafana core)
 - Plugins live under `/opt/grafana-plugins` so a Grafana PVC does not hide them
 - Optional Druid datasource URL in values
-- Optional `prometheusUrl` / `opensearchUrl` / `postgres` connection values (empty default), same pattern as `druidUrl`. When `postgres.url` is set, those values also provision the forecast app snapshot store (pgx, schema `forecast`); this chart still does not run a Postgres server
+- Optional `prometheusUrl` / `opensearchUrl` / `postgres` connection values (empty default), same pattern as `druidUrl`. When `postgres.url` is set, those values also provision the forecast app snapshot store and Forecast datasource jsonData (pgx, schema `forecast`); this chart still does not run a Postgres server
 - Enable the forecast app via provisioning
 - Optional baselines worker **sidecar** in the Grafana pod (env `DRUID_*` / `KAFKA_*` as in `timeseries-baselines`)
 - One Grafana replica (therefore one worker); do not scale out

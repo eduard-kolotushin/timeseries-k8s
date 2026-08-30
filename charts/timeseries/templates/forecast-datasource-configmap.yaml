@@ -1,0 +1,32 @@
+{{- if .Values.grafana.enabled }}
+{{- $url := .Values.postgres.url | default "" }}
+{{- $host := regexReplaceAll ":\\d+$" $url "" }}
+{{- $port := "5432" }}
+{{- if contains ":" $url }}
+  {{- $port = regexFind "\\d+$" $url }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-forecast-datasource
+  labels:
+    {{- include "timeseries.labels" . | nindent 4 }}
+data:
+  forecast.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Forecast
+        type: eduardkolotushin-forecast-datasource
+        uid: forecast
+        access: proxy
+        {{- if $host }}
+        jsonData:
+          storeHost: {{ $host | quote }}
+          storePort: {{ $port | int }}
+          storeDatabase: {{ .Values.postgres.database | quote }}
+          storeUser: {{ .Values.postgres.user | quote }}
+          storeSslMode: disable
+        secureJsonData:
+          storePassword: {{ .Values.postgres.password | quote }}
+        {{- end }}
+{{- end }}

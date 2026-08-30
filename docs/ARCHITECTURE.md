@@ -18,15 +18,15 @@ Grafana (custom image) queries existing datasources and runs `POST /api/plugins/
 
 The baselines worker runs as a sidecar in the Grafana pod. It reads existing Druid SQL, fits minute-of-week, and writes to an existing Kafka baselines topic.
 
-Kafka, Druid, Prometheus, OpenSearch, and Postgres are not in this chart. Optional datasource URLs (`druidUrl`, `prometheusUrl`, `opensearchUrl`, `postgres`) provision Grafana datasources when set. The same `postgres` values provision `FORECAST_STORE_*` and app jsonData for fitted snapshots. The sibling sandbox can install the servers with `make helm-up`.
+Kafka, Druid, Prometheus, OpenSearch, and Postgres are not in this chart. Optional datasource URLs (`druidUrl`, `prometheusUrl`, `opensearchUrl`, `postgres`) provision Grafana datasources when set. The same `postgres` values provision `FORECAST_STORE_*` (Grafana container), app jsonData, and Forecast datasource jsonData for fitted snapshots. Grafana 12.4+ does not forward host `FORECAST_STORE_*` into plugin processes. The sibling sandbox can install the servers with `make helm-up`.
 
 ## Grafana image
 
 1. Node 22: `npm ci` + `npm run build` in the pinned plugin repo (webpack `dist/`).
-2. Go 1.26: `CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o dist/gpx_forecast_linux_amd64 ./pkg`.
+2. Go 1.26: `CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o dist/gpx_forecast_linux_amd64 ./pkg` and copy that binary into `dist/forecast-datasource/`.
 3. `grafana cli plugins install grafadruid-druid-datasource grafana-opensearch-datasource`.
 4. Copy forecast `dist/` and the third-party plugins into `/opt/grafana-plugins`.
-5. `GF_PATHS_PLUGINS=/opt/grafana-plugins` and `GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS` for the two forecast plugin IDs.
+5. `GF_PATHS_PLUGINS=/opt/grafana-plugins` and `GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS` for the forecast app, overlay panel, and forecast datasource IDs.
 6. Run as uid `472`.
 
 Prometheus and Postgres are Grafana core; they are not installed via `grafana cli`.
@@ -40,7 +40,7 @@ The Grafana Helm subchart must set `grafana.ini.paths.plugins` to `/opt/grafana-
 ## Helm
 
 - Subchart `grafana` from `https://grafana-community.github.io/helm-charts`, condition `grafana.enabled`.
-- Parent templates: forecast-app ConfigMap, forecast-store env ConfigMap (`FORECAST_STORE_*`, Grafana `envFromConfigMaps`), optional Druid / Prometheus / OpenSearch / Postgres datasource ConfigMaps (`optional: true` mounts), baselines env ConfigMap.
+- Parent templates: forecast-app ConfigMap, forecast datasource ConfigMap, forecast-store env ConfigMap (`FORECAST_STORE_*`, Grafana `envFromConfigMaps`), optional Druid / Prometheus / OpenSearch / Postgres datasource ConfigMaps (`optional: true` mounts), baselines env ConfigMap.
 - Worker container: Grafana `extraContainers` (tpl’d with the release name so it can `envFrom` `{{ .Release.Name }}-baselines-env`).
 - One Grafana replica. Do not scale out; duplicate ticks republish the same lead point.
 - The worker cannot run if Grafana is disabled.

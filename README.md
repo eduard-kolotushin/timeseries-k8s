@@ -8,7 +8,7 @@ See [docs/INTENTIONS.md](docs/INTENTIONS.md) and [docs/ARCHITECTURE.md](docs/ARC
 
 ## What it deploys
 
-- Grafana 13.1 with the unsigned forecast app/panel, the Druid datasource plugin, and the OpenSearch datasource plugin baked in
+- Grafana 13.1 with the unsigned forecast app, overlay panel, and forecast datasource, the Druid datasource plugin, and the OpenSearch datasource plugin baked in
 - Optional baselines worker sidecar in the Grafana pod (minute-of-week fit to Kafka)
 
 Kafka, Druid, Prometheus, OpenSearch, and Postgres must already exist if you want those datasources. Pass URLs in values. This chart does not run those servers. A full local stack is sibling [`timeseries-grafana-sandbox`](../timeseries-grafana-sandbox) `make helm-up`.

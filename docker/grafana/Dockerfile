@@ -14,7 +14,9 @@ RUN curl -fsSL "https://github.com/eduard-kolotushin/timeseries-grafana/archive/
 FROM golang:1.26-bookworm AS backend
 WORKDIR /src
 COPY --from=frontend /src /src
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o dist/gpx_forecast_linux_amd64 ./pkg
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o dist/gpx_forecast_linux_amd64 ./pkg \
+ && mkdir -p dist/forecast-datasource \
+ && cp dist/gpx_forecast_linux_amd64 dist/forecast-datasource/gpx_forecast_linux_amd64
 
 FROM grafana/grafana:${GRAFANA_VERSION}
 ARG GRAFANA_VERSION
@@ -27,5 +29,5 @@ RUN grafana cli --pluginsDir /tmp/cli-plugins plugins install grafadruid-druid-d
 COPY --from=backend --chown=472:472 /src/dist /opt/grafana-plugins/eduardkolotushin-forecast-app
 RUN chown -R 472:472 /opt/grafana-plugins
 ENV GF_PATHS_PLUGINS=/opt/grafana-plugins
-ENV GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=eduardkolotushin-forecast-app,eduardkolotushin-forecast-panel
+ENV GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=eduardkolotushin-forecast-app,eduardkolotushin-forecast-panel,eduardkolotushin-forecast-datasource
 USER 472
