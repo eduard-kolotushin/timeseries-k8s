@@ -5,9 +5,15 @@ HELM ?= helm
 HELM_REPO_CONFIG := $(CURDIR)/.helm/repositories.yaml
 HELM_REPO_CACHE := $(CURDIR)/.helm/cache
 HELM_GRAFANA_REPO := https://grafana-community.github.io/helm-charts
-# cmd.exe has no /dev/null (make uses cmd as its shell when PATH has no sh.exe, i.e. in a
-# PowerShell session) and sh has no NUL; both name a null device on Windows.
-NULLDEV := $(if $(filter Windows_NT,$(OS)),NUL,/dev/null)
+# make uses cmd.exe as its shell when PATH has no sh.exe — the case in a PowerShell or cmd
+# session — where POSIX recipes and /dev/null do not exist. Pin Git's sh.exe the way the
+# sibling repos do, so every launcher runs the same recipes.
+ifeq ($(OS),Windows_NT)
+GIT_SH := $(if $(wildcard C:/Program\ Files/Git/bin/sh.exe),C:/Program Files/Git/bin/sh.exe,$(wildcard $(subst \,/,$(LOCALAPPDATA))/Programs/Git/bin/sh.exe))
+ifneq ($(strip $(GIT_SH)),)
+SHELL := $(GIT_SH)
+endif
+endif
 
 .PHONY: all help lint helm-deps docker-grafana docker-baselines
 
@@ -26,7 +32,7 @@ helm-deps:
 
 lint: helm-deps
 	helm lint $(CHART) -f ci/values.yaml
-	helm template test $(CHART) -f ci/values.yaml >$(NULLDEV)
+	helm template test $(CHART) -f ci/values.yaml >/dev/null
 
 docker-grafana:
 	docker build -f docker/grafana/Dockerfile -t $(GRAFANA_IMAGE) docker/grafana
