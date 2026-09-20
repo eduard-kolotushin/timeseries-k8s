@@ -17,7 +17,7 @@ Deploy the forecast Grafana plugin and the minute-of-week baselines worker on an
 | Images | linux/amd64; GHCR `ghcr.io/eduard-kolotushin/timeseries-grafana` and `…/timeseries-baselines` |
 | Plugin load | `GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS` (not development mode, not grafana.com signing) |
 | Auth | Grafana Helm admin secret; no anonymous Admin (sandbox values may override) |
-| Source pins | Dockerfiles clone sibling git (plugin `d690cda6b3cde0a07039506b1887e6a09d3a6e36`, worker `e4c7ac35af18afc18c342a576e5f71316f68579c`) |
+| Source pins | Dockerfiles clone sibling git (plugin `1d543e8462d841573b98b37caaad191c25db580b`, worker `1da4af37f3c5aa1e777c4fa2a70fe3dd1114e377`) |
 
 ## v1 must-have
 
