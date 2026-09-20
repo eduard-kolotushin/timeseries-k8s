@@ -2,10 +2,14 @@
 {{- $_ := required "baselines.druidBroker is required when baselines.enabled is true" .Values.baselines.druidBroker }}
 {{- $_ := required "baselines.kafkaBrokers is required when baselines.enabled is true" .Values.baselines.kafkaBrokers }}
 {{- $url := .Values.postgres.url | default "" }}
-{{- $host := regexReplaceAll ":\\d+$" $url "" }}
+{{- $hostSource := .Values.baselines.storeHost | default "" }}
+{{- if not $hostSource }}
+  {{- $hostSource = $url }}
+{{- end }}
+{{- $host := regexReplaceAll ":\\d+$" $hostSource "" }}
 {{- $port := "5432" }}
-{{- if contains ":" $url }}
-  {{- $port = regexFind "\\d+$" $url }}
+{{- if contains ":" $hostSource }}
+  {{- $port = regexFind "\\d+$" $hostSource }}
 {{- end }}
 apiVersion: v1
 kind: ConfigMap
@@ -32,7 +36,9 @@ data:
   SHARD_MEMBERSHIP: {{ .Values.baselines.membership | quote }}
   DEFAULT_RETRAIN_CRON: {{ .Values.baselines.defaultRetrainCron | quote }}
   # Empty when postgres.url is unset, which turns snapshot persistence off and keeps the per-tick fit
-  # path; exactly how the sibling forecast-store ConfigMap renders today.
+  # path; exactly how the sibling forecast-store ConfigMap renders today. `baselines.storeHost`
+  # overrides the host (and port) only — the credentials and database still come from `postgres.*`,
+  # so an install whose store is reached by a different DNS name than `postgres.url` sets it.
   BASELINE_STORE_HOST: {{ $host | quote }}
   BASELINE_STORE_PORT: {{ $port | quote }}
   BASELINE_STORE_DATABASE: {{ .Values.postgres.database | default "" | quote }}

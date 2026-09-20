@@ -24,6 +24,12 @@ Snapshots, the retrain queue and (with membership=store) the peer set live in Po
   --set postgres.url=overlay-postgres.overlay-postgres.svc:5432
   --set postgres.database=overlay --set postgres.user=overlay --set postgres.password=overlay
 
+`baselines.storeHost` overrides only the rendered host/port (the credentials and database still come from `postgres.*`), which is how an install reaches the same store by a different DNS name:
+
+  --set baselines.storeHost=overlay-postgres.overlay-postgres.svc
+
+Beware: `--set baselines.membership=store` requires a store. With neither `postgres.url` nor `baselines.storeHost` the worker exits at startup with a configuration error, and the pod CrashLoops — membership `store` is not a fallback to `dns`.
+
 kubectl scale changes the live replica count only; the next helm upgrade resets it to baselines.replicas.
 
 Disable the worker:

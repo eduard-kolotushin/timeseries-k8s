@@ -93,6 +93,9 @@ baselines:
   workerTtl: ""
   # dns keeps the headless Service peer discovery below; the sandbox Helm values switch this to store.
   membership: dns
+  # Host (and optional `:port`) of the store when it differs from the `postgres.url` host — e.g. the
+  # in-cluster Service DNS name of the same database. Credentials/database still come from `postgres.*`.
+  storeHost: ""
   defaultRetrainCron: "0 3 * * *"
   kafkaBrokers: ""
   kafkaTopic: baselines
