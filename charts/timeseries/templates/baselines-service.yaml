@@ -1,0 +1,16 @@
+{{- if .Values.baselines.enabled }}
+# Headless Service with no ports: the worker serves no HTTP. It exists only so the
+# SHARD_DNS name returns the live worker pod IPs (the SHARD_ID peer identities).
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-baselines-headless
+  labels:
+    {{- include "timeseries.labels" . | nindent 4 }}
+    app.kubernetes.io/component: baselines
+spec:
+  clusterIP: None
+  selector:
+    {{- include "timeseries.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: baselines
+{{- end }}

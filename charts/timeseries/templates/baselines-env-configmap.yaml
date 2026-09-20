@@ -1,6 +1,12 @@
-{{- if and .Values.grafana.enabled .Values.baselines.enabled }}
+{{- if .Values.baselines.enabled }}
 {{- $_ := required "baselines.druidBroker is required when baselines.enabled is true" .Values.baselines.druidBroker }}
 {{- $_ := required "baselines.kafkaBrokers is required when baselines.enabled is true" .Values.baselines.kafkaBrokers }}
+{{- $url := .Values.postgres.url | default "" }}
+{{- $host := regexReplaceAll ":\\d+$" $url "" }}
+{{- $port := "5432" }}
+{{- if contains ":" $url }}
+  {{- $port = regexFind "\\d+$" $url }}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -11,6 +17,28 @@ metadata:
 data:
   DRUID_BROKER: {{ .Values.baselines.druidBroker | quote }}
   DRUID_DATASOURCE: {{ .Values.baselines.druidDatasource | quote }}
+  DRUID_MAX_RANGE: {{ .Values.baselines.druidMaxRange | quote }}
+  DRUID_MAX_RPS: {{ .Values.baselines.druidMaxRps | quote }}
+  TRAIN_CONCURRENCY: {{ .Values.baselines.trainConcurrency | quote }}
+  HASH_SCAN_TTL: {{ .Values.baselines.hashScanTtl | quote }}
+  {{- if .Values.baselines.workerTtl }}
+  # Must stay longer than INTERVAL: a heartbeat written at the end of one tick is
+  # read at the start of the next, so a shorter TTL expires before it is seen.
+  # Left unset the worker derives max(30s, 2*INTERVAL) itself.
+  WORKER_TTL: {{ .Values.baselines.workerTtl | quote }}
+  {{- end }}
+  # Store membership is the default only when the sandbox values override it; the chart default stays
+  # dns so the headless-Service peer discovery below keeps working on an install that sets nothing.
+  SHARD_MEMBERSHIP: {{ .Values.baselines.membership | quote }}
+  DEFAULT_RETRAIN_CRON: {{ .Values.baselines.defaultRetrainCron | quote }}
+  # Empty when postgres.url is unset, which turns snapshot persistence off and keeps the per-tick fit
+  # path; exactly how the sibling forecast-store ConfigMap renders today.
+  BASELINE_STORE_HOST: {{ $host | quote }}
+  BASELINE_STORE_PORT: {{ $port | quote }}
+  BASELINE_STORE_DATABASE: {{ .Values.postgres.database | default "" | quote }}
+  BASELINE_STORE_USER: {{ .Values.postgres.user | default "" | quote }}
+  BASELINE_STORE_PASSWORD: {{ .Values.postgres.password | default "" | quote }}
+  BASELINE_STORE_SSLMODE: "disable"
   KAFKA_BROKERS: {{ .Values.baselines.kafkaBrokers | quote }}
   KAFKA_TOPIC: {{ .Values.baselines.kafkaTopic | quote }}
   LOOKBACK: {{ .Values.baselines.lookback | quote }}

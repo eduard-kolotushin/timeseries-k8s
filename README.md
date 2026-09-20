@@ -9,7 +9,7 @@ See [docs/INTENTIONS.md](docs/INTENTIONS.md) and [docs/ARCHITECTURE.md](docs/ARC
 ## What it deploys
 
 - Grafana 13.1 with the unsigned forecast app, overlay panel, and forecast datasource, the Druid datasource plugin, and the OpenSearch datasource plugin baked in
-- Optional baselines worker sidecar in the Grafana pod (minute-of-week fit to Kafka)
+- Optional baselines worker Deployment (minute-of-week fit to Kafka), scaled independently of Grafana
 
 Kafka, Druid, Prometheus, OpenSearch, and Postgres must already exist if you want those datasources. Pass URLs in values. This chart does not run those servers. A full local stack is sibling [`timeseries-grafana-sandbox`](../timeseries-grafana-sandbox) `make helm-up`.
 
@@ -26,6 +26,8 @@ linux/amd64. Tags are published from this repo on `v*` git tags (first `v0.1.0` 
 make docker-grafana
 make docker-baselines
 ```
+
+Both Dockerfiles clone a sibling repo by pinned ref (`PLUGIN_REF`, `BASELINES_REF`) over GitHub, not from a local checkout, so the pinned commit must be **pushed** before either build or the CI images job can succeed — a local-only commit makes the fetch 404.
 
 ## Install
 
@@ -56,7 +58,21 @@ Port-forward Grafana:
 kubectl port-forward svc/timeseries-grafana 3000:80
 ```
 
-Disable the worker with `--set baselines.enabled=false --set grafana.extraContainers=""`. Disable Grafana with `--set grafana.enabled=false` (the sidecar cannot run without Grafana).
+## Scale the worker
+
+The worker runs as its own Deployment (`<release>-baselines`), independent of Grafana. Replicas divide the metric hashes by rendezvous hashing, so there is no coordinator and no leader:
+
+```bash
+kubectl -n <ns> scale deployment/timeseries-baselines --replicas=4
+```
+
+Each pod takes `SHARD_ID` from the Downward API (`status.podIP`) and finds its peers through `SHARD_DNS`, the headless Service `<release>-baselines-headless` (`baselines.membership`, default `dns`; set it to `store` to use the Postgres heartbeat instead). Adding or removing one replica moves roughly `1/N` of the hashes; a point published twice is collapsed by the sink, so scale freely.
+
+Set `postgres.url` (plus `database` / `user` / `password`) and the worker persists snapshots to that Postgres and trains on a cron instead of re-reading Druid every tick; `baselines.druidMaxRange`, `druidMaxRps`, `trainConcurrency`, `hashScanTtl` and `defaultRetrainCron` bound those Druid reads. `grafana.retrainCron` and `grafana.pluginToken` configure the plugin's own backend retrainer.
+
+Disable the worker with `--set baselines.enabled=false`. Disable Grafana with `--set grafana.enabled=false` (the worker keeps running).
+
+Full runbook, including the VM path, verification queries, and the negative controls: [`timeseries-baselines/docs/POC.md`](../timeseries-baselines/docs/POC.md) (Русский: [`POC.ru.md`](../timeseries-baselines/docs/POC.ru.md)).
 
 ## Check the chart
 

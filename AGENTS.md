@@ -22,20 +22,25 @@ Kubernetes images and Helm for the forecast Grafana plugin and the baselines wor
 - Stay within v1 unless `docs/INTENTIONS.md` is updated first
 - linux/amd64 only
 - Unsigned plugin load via `allow_loading_unsigned_plugins`, not `GF_DEFAULT_APP_MODE=development`
-- Worker is a Grafana sidecar, not a separate Deployment
+- Worker is a Deployment of its own; its replicas are independent of Grafana replicas
 
 ## v1 in scope
 
 Grafana-with-plugin image (forecast app, overlay panel, forecast datasource + Druid + OpenSearch datasource plugins), worker image, umbrella Helm chart assuming existing Kafka/Druid and optional Prom/OS/PG URLs. `postgres` values also provision `FORECAST_STORE_*` and Forecast datasource jsonData for fitted snapshots.
 
-## v1 out of scope
+## v2 in scope
 
-Plugin implementation, worker implementation, Compose sandbox, Prometheus/OpenSearch/Postgres servers in this chart, grafana.com signing, arm64, worker HTTP probes, Kafka/Druid in this chart.
+Scalable worker Deployment + headless Service (`baselines.replicas`, `SHARD_ID`/`SHARD_DNS`, no coordinator), duplicate-tolerant ingestion (`doubleMax`, minute rollup), worker replicas independent of Grafana replicas.
+
+## v1/v2 out of scope
+
+Plugin implementation, worker implementation, Compose sandbox, Prometheus/OpenSearch/Postgres servers in this chart, grafana.com signing, arm64, worker HTTP probes, Kafka/Druid in this chart, worker leader election or coordinator, service mesh, HPA tuning, worker HTTP endpoint.
 
 ## Workflow
 
 - `make lint` — `make helm-deps`, `helm lint`, `helm template`
 - `make docker-grafana` / `make docker-baselines` — local image builds
+- Scale the worker: `kubectl -n <ns> scale deployment/<release>-baselines --replicas=N`
 - Bump Dockerfile `PLUGIN_REF` / `BASELINES_REF` when siblings change
 - Full local stack (Kafka + Druid + Prom/OS/PG + this chart): sibling `timeseries-grafana-sandbox` `make helm-up`
 - GitHub Actions on `main`: helm lint/template; on `v*` tags: push both images to GHCR

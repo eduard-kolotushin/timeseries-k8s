@@ -18,14 +18,26 @@ data:
       - type: eduardkolotushin-forecast-app
         org_id: 1
         disabled: false
-        {{- if $host }}
+        {{- if or $host .Values.grafana.retrainCron }}
         jsonData:
+          {{- if $host }}
           storeHost: {{ $host | quote }}
           storePort: {{ $port | int }}
           storeDatabase: {{ .Values.postgres.database | quote }}
           storeUser: {{ .Values.postgres.user | quote }}
           storeSslMode: disable
+          {{- end }}
+          {{- if .Values.grafana.retrainCron }}
+          retrainCron: {{ .Values.grafana.retrainCron | quote }}
+          {{- end }}
+        {{- end }}
+        {{- if or $host .Values.grafana.pluginToken }}
         secureJsonData:
+          {{- if $host }}
           storePassword: {{ .Values.postgres.password | quote }}
+          {{- end }}
+          {{- if .Values.grafana.pluginToken }}
+          grafanaToken: {{ .Values.grafana.pluginToken | quote }}
+          {{- end }}
         {{- end }}
 {{- end }}

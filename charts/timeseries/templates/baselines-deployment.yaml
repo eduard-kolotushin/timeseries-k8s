@@ -1,0 +1,55 @@
+{{- if .Values.baselines.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-baselines
+  labels:
+    {{- include "timeseries.labels" . | nindent 4 }}
+    app.kubernetes.io/component: baselines
+spec:
+  replicas: {{ .Values.baselines.replicas }}
+  selector:
+    matchLabels:
+      {{- include "timeseries.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: baselines
+  template:
+    metadata:
+      labels:
+        {{- include "timeseries.labels" . | nindent 8 }}
+        app.kubernetes.io/component: baselines
+      annotations:
+        # The worker reads DRUID_BROKER/KAFKA_BROKERS/LOOKBACK from the ConfigMap via envFrom, and
+        # env vars are captured at container start. Without this checksum a values-only change edits
+        # the ConfigMap, leaves the pod template identical, and helm upgrade reports success while the
+        # running workers keep the stale endpoints and peer settings.
+        checksum/baselines-env: {{ include (print $.Template.BasePath "/baselines-env-configmap.yaml") . | sha256sum }}
+    spec:
+      containers:
+        - name: baselines
+          image: "{{ .Values.baselines.image.registry }}/{{ .Values.baselines.image.repository }}:{{ .Values.baselines.image.tag }}"
+          imagePullPolicy: {{ .Values.baselines.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-baselines-env
+          env:
+            # Peers agree on metric_hash ownership by rendezvous hashing, so no coordinator is needed.
+            # SHARD_ID is this pod's IP. SHARD_DNS is the bare Service name, which resolves through the
+            # pod's own search domains (namespace.svc.<cluster domain>) and so keeps working on a cluster
+            # with a custom --cluster-domain.
+            - name: SHARD_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: SHARD_DNS
+              value: "{{ .Release.Name }}-baselines-headless"
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          resources:
+            {{- toYaml .Values.baselines.resources | nindent 12 }}
+{{- end }}

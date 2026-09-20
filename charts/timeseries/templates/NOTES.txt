@@ -1,15 +1,34 @@
 timeseries-k8s {{ .Chart.Version }}
 
-When the baselines worker sidecar is enabled, set broker URLs:
+When the baselines worker is enabled, set broker URLs:
 
   --set baselines.druidBroker=http://druid-broker.druid.svc:8082
   --set baselines.kafkaBrokers=kafka.kafka.svc:9092
 
-The worker runs in the Grafana pod. It cannot run if Grafana is disabled.
+The worker runs in its own Deployment ({{ .Release.Name }}-baselines), independent of Grafana. Scale it without touching Grafana:
+
+  kubectl -n {{ .Release.Namespace }} scale deployment/{{ .Release.Name }}-baselines --replicas=N
+
+Replicas divide the metric hashes by rendezvous hashing; no coordinator and no leader. SHARD_ID is each pod's IP (Downward API status.podIP) and SHARD_DNS is the headless Service {{ .Release.Name }}-baselines-headless, whose A records are those same pod IPs. The Service name is deliberately bare, so it resolves through the pod's search domains on any cluster domain. `baselines.membership` (default `dns`) selects the source; `--set baselines.membership=store` reads the Postgres heartbeat instead.
+
+The worker publishes from a stored snapshot and trains on a cron, so its Druid calls are bounded:
+
+  --set baselines.druidMaxRange=24h     # max time range per SQL request (0 = one request)
+  --set baselines.druidMaxRps=4         # requests per second against Druid (0 = off)
+  --set baselines.trainConcurrency=2    # whole retrains in flight
+  --set baselines.hashScanTtl=30m       # cached span scan; publishing re-reads nothing
+  --set baselines.defaultRetrainCron='0 3 * * *'
+
+Snapshots, the retrain queue and (with membership=store) the peer set live in Postgres. The worker ConfigMap renders BASELINE_STORE_HOST/PORT/DATABASE/USER/PASSWORD/SSLMODE from the same `postgres` values as the plugin snapshot store; leave `postgres.url` empty and the worker keeps its per-tick fit path:
+
+  --set postgres.url=overlay-postgres.overlay-postgres.svc:5432
+  --set postgres.database=overlay --set postgres.user=overlay --set postgres.password=overlay
+
+kubectl scale changes the live replica count only; the next helm upgrade resets it to baselines.replicas.
 
 Disable the worker:
 
-  --set baselines.enabled=false --set grafana.extraContainers=""
+  --set baselines.enabled=false
 
 Grafana admin password (Helm default secret):
 
@@ -31,3 +50,10 @@ Optional datasource URLs (this chart does not run those servers):
   --set prometheusUrl=http://prometheus.prometheus.svc:9090
   --set opensearchUrl=http://opensearch.opensearch.svc:9200
   --set postgres.url=overlay-postgres.overlay-postgres.svc:5432
+
+The forecast app retrains stored panel snapshots from its own backend on a cron, with no browser open:
+
+  --set grafana.retrainCron='0 3 * * *'                 # omit for the plugin default
+  --set grafana.pluginToken=<viewer service-account>    # needed when anonymous auth is off
+
+grafana.pluginToken is provisioned as the app's secureJsonData.grafanaToken, the same path as the snapshot-store password. Without a token the scheduler can still fetch frames from a Grafana that does not require auth for /api/ds/query; a query whose snapshot is due retrains it either way.

@@ -20,6 +20,12 @@ grafana:
     enabled: false
   persistence:
     enabled: true
+  # Backend retrain scheduler. Empty retrainCron leaves the plugin on its own default (0 3 * * *);
+  # empty pluginToken sends no Authorization header, which only satisfies a Grafana that does not
+  # require auth for /api/ds/query (the sandbox's anonymous Admin). Both are omitted from the app
+  # provisioning ConfigMap when empty, so an install that sets neither keeps today's shape.
+  retrainCron: ""
+  pluginToken: ""
   grafana.ini:
     paths:
       plugins: /opt/grafana-plugins
@@ -63,32 +69,11 @@ grafana:
       readOnly: true
       optional: true
   datasources: {}
-  # Sidecar image must match baselines.image. Disable with baselines.enabled=false
-  # and --set grafana.extraContainers="" .
-  extraContainers: |
-    - name: baselines
-      image: ghcr.io/eduard-kolotushin/timeseries-baselines:0.1.0
-      imagePullPolicy: IfNotPresent
-      envFrom:
-        - configMapRef:
-            name: {{ .Release.Name }}-baselines-env
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 65532
-        allowPrivilegeEscalation: false
-        capabilities:
-          drop:
-            - ALL
-        readOnlyRootFilesystem: true
-      resources:
-        requests:
-          cpu: 50m
-          memory: 64Mi
-        limits:
-          memory: 256Mi
+  extraContainers: ""
 
 baselines:
   enabled: true
+  replicas: 1
   image:
     registry: ghcr.io
     repository: eduard-kolotushin/timeseries-baselines
@@ -96,6 +81,19 @@ baselines:
     pullPolicy: IfNotPresent
   druidBroker: ""
   druidDatasource: metrics
+  # Abyss caps the time range a single Druid SQL request may span; 0 keeps one request per read.
+  druidMaxRange: 0
+  druidMaxRps: 4
+  trainConcurrency: 2
+  # The span scan is cached: an unscoped GROUP BY metric_hash per tick is what HASH_SCAN_TTL removes.
+  hashScanTtl: 5m
+  # Empty leaves WORKER_TTL to the worker, which derives max(30s, 2*INTERVAL) so a
+  # heartbeat cannot age out between ticks. Set it only to override that, and keep
+  # it longer than `interval`.
+  workerTtl: ""
+  # dns keeps the headless Service peer discovery below; the sandbox Helm values switch this to store.
+  membership: dns
+  defaultRetrainCron: "0 3 * * *"
   kafkaBrokers: ""
   kafkaTopic: baselines
   lookback: 336h
