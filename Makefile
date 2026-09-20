@@ -5,6 +5,9 @@ HELM ?= helm
 HELM_REPO_CONFIG := $(CURDIR)/.helm/repositories.yaml
 HELM_REPO_CACHE := $(CURDIR)/.helm/cache
 HELM_GRAFANA_REPO := https://grafana-community.github.io/helm-charts
+# cmd.exe has no /dev/null (make uses cmd as its shell when PATH has no sh.exe, i.e. in a
+# PowerShell session) and sh has no NUL; both name a null device on Windows.
+NULLDEV := $(if $(filter Windows_NT,$(OS)),NUL,/dev/null)
 
 .PHONY: all help lint helm-deps docker-grafana docker-baselines
 
@@ -23,7 +26,7 @@ helm-deps:
 
 lint: helm-deps
 	helm lint $(CHART) -f ci/values.yaml
-	helm template test $(CHART) -f ci/values.yaml >/dev/null
+	helm template test $(CHART) -f ci/values.yaml >$(NULLDEV)
 
 docker-grafana:
 	docker build -f docker/grafana/Dockerfile -t $(GRAFANA_IMAGE) docker/grafana
