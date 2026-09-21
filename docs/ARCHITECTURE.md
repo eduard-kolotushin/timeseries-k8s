@@ -10,7 +10,7 @@
 | `charts/timeseries/charts/` | Grafana community subchart (fetched, gitignored) |
 | `ci/values.yaml` | Dummy broker URLs for `helm lint` / `helm template` |
 
-Plugin and worker git pins are `ARG` defaults in the Dockerfiles (`PLUGIN_REF=d6399e5a3451c4cacf433736d28c80a966235502`, `BASELINES_REF=179a1551e4dd1064b93cbdd42d12fb684a20dfcd`).
+Plugin and worker git pins are `ARG` defaults in the Dockerfiles (`PLUGIN_REF=8f2a9ff690bcf86e3290774e75d101c448b77567`, `BASELINES_REF=179a1551e4dd1064b93cbdd42d12fb684a20dfcd`).
 
 ## Cluster data flow
 
