@@ -19,6 +19,19 @@ jobs:
         uses: azure/setup-helm@v4
       - name: Lint and template
         run: make lint
+      - name: Render non-default postgres and rollout values
+        # The three renders the 2026-09 remediation added — `postgres.sslMode`, the store Secret and
+        # the `configRevision` rollout — had no CI coverage; `make lint` only renders the defaults.
+        run: |
+          out=$(helm template test charts/timeseries -f ci/values.yaml \
+            --set postgres.url=postgres://u:p@h.example:5432/db \
+            --set postgres.sslMode=require \
+            --set grafana.configRevision=ci)
+          echo "$out" | grep -q 'FORECAST_STORE_SSLMODE: "require"'
+          echo "$out" | grep -q 'BASELINE_STORE_SSLMODE: "require"'
+          echo "$out" | grep -q 'FORECAST_STORE_HOST: "h.example"'
+          echo "$out" | grep -q 'FORECAST_CONFIG_CHECKSUM'
+          echo "$out" | grep -q 'name: test-store-credentials'
       - name: Check image pins against the sibling heads
         # A Dockerfile pin that is neither the sibling head nor an ancestor of it builds stale
         # code into a released image, which is what `make lint` cannot see.
