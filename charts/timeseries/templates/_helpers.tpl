@@ -92,9 +92,9 @@ only at startup and every mount uses subPath (kubelet never updates those in pla
 change has to move the pod template. The Grafana subchart does not template `podAnnotations`; the
 hooks it does pass through `tpl` — `env`, `envFromConfigMaps[].name`, `envFromSecrets[].name`,
 `extraConfigmapMounts.*` — are rendered in the *subchart* context, which sees `grafana.*` values and
-`global` but not this chart's `postgres` block. This helper therefore hashes exactly the
-subchart-visible inputs that feed `<release>-forecast-app`: `retrainCron` and `pluginToken`.
-A store-only change needs `grafana.configRevision` (see values.yaml).
+`global` but not this chart's `postgres` block. This helper therefore hashes the subchart-visible inputs
+that feed `<release>-forecast-app`: `retrainCron`, `pluginToken` and `configRevision`.
+A store-only change needs `grafana.configRevision` bumped (see values.yaml).
 */}}
 {{- define "timeseries.grafanaConfigChecksum" -}}
 {{- printf "%s|%s|%s" (toString .Values.retrainCron) (toString .Values.pluginToken) (toString .Values.configRevision) | sha256sum -}}

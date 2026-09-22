@@ -120,7 +120,8 @@ baselines:
     pullPolicy: IfNotPresent
   druidBroker: ""
   druidDatasource: metrics
-  # Abyss caps the time range a single Druid SQL request may span; 0 keeps one request per read.
+  # DRUID_MAX_RANGE: the longest time span one Druid SQL request may cover. The worker slices longer
+  # windows into consecutive requests of at most this width; 0 keeps one request per read.
   druidMaxRange: 0
   druidMaxRps: 4
   trainConcurrency: 2
