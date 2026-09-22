@@ -17,7 +17,11 @@ Deploy the forecast Grafana plugin and the minute-of-week baselines worker on an
 | Images | linux/amd64; GHCR `ghcr.io/eduard-kolotushin/timeseries-grafana` and `…/timeseries-baselines` |
 | Plugin load | `GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS` (not development mode, not grafana.com signing) |
 | Auth | Grafana Helm admin secret; no anonymous Admin (sandbox values may override) |
-| Source pins | Dockerfiles clone sibling git (plugin `d6399e5a3451c4cacf433736d28c80a966235502`, worker `179a1551e4dd1064b93cbdd42d12fb684a20dfcd`) |
+| Source pins | Dockerfiles clone sibling git (plugin `8feecafc14ba2f859d5974cf678130baf9637d0a`, worker `7ec489faafeb85971dd5f5c247aaf0bc37c63913`) |
+
+Both pins are `ARG` defaults in `docker/grafana/Dockerfile` and `docker/baselines/Dockerfile`, and
+they are bumped in the same pass as the sibling change they carry; `make check-pins` (in CI) fails when
+a pin is neither the sibling head nor an ancestor of it.
 
 ## v1 must-have
 

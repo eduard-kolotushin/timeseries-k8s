@@ -23,6 +23,9 @@ spec:
         # the ConfigMap, leaves the pod template identical, and helm upgrade reports success while the
         # running workers keep the stale endpoints and peer settings.
         checksum/baselines-env: {{ include (print $.Template.BasePath "/baselines-env-configmap.yaml") . | sha256sum }}
+        # BASELINE_STORE_PASSWORD arrives through the store-credentials Secret (the env ConfigMap
+        # carries everything else), so a rotated password has to move the pod template too.
+        checksum/store-credentials: {{ include (print $.Template.BasePath "/store-credentials.yaml") . | sha256sum }}
     spec:
       containers:
         - name: baselines
@@ -31,6 +34,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: {{ .Release.Name }}-baselines-env
+            - secretRef:
+                name: {{ .Release.Name }}-store-credentials
           env:
             # Peers agree on metric_hash ownership by rendezvous hashing, so no coordinator is needed.
             # SHARD_ID is this pod's IP. SHARD_DNS is the bare Service name, which resolves through the

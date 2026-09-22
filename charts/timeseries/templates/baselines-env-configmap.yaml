@@ -2,15 +2,9 @@
 {{- $_ := required "baselines.druidBroker is required when baselines.enabled is true" .Values.baselines.druidBroker }}
 {{- $_ := required "baselines.kafkaBrokers is required when baselines.enabled is true" .Values.baselines.kafkaBrokers }}
 {{- $url := .Values.postgres.url | default "" }}
-{{- $hostSource := .Values.baselines.storeHost | default "" }}
-{{- if not $hostSource }}
-  {{- $hostSource = $url }}
-{{- end }}
-{{- $host := regexReplaceAll ":\\d+$" $hostSource "" }}
-{{- $port := "5432" }}
-{{- if contains ":" $hostSource }}
-  {{- $port = regexFind "\\d+$" $hostSource }}
-{{- end }}
+{{- $address := include "timeseries.postgresAddress" (dict "raw" (default $url .Values.baselines.storeHost)) | splitList "|" }}
+{{- $host := index $address 0 }}
+{{- $port := index $address 1 }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -25,6 +19,34 @@ data:
   DRUID_MAX_RPS: {{ .Values.baselines.druidMaxRps | quote }}
   TRAIN_CONCURRENCY: {{ .Values.baselines.trainConcurrency | quote }}
   HASH_SCAN_TTL: {{ .Values.baselines.hashScanTtl | quote }}
+  {{- with include "timeseries.optional" .Values.baselines.logLevel }}
+  LOG_LEVEL: {{ . | quote }}
+  {{- end }}
+  {{- with include "timeseries.optional" .Values.baselines.druidTimeout }}
+  DRUID_TIMEOUT: {{ . | quote }}
+  {{- end }}
+  {{- with include "timeseries.optional" .Values.baselines.druidRetries }}
+  DRUID_RETRIES: {{ . | quote }}
+  {{- end }}
+  {{- with include "timeseries.optional" .Values.baselines.druidMaxInflight }}
+  DRUID_MAX_INFLIGHT: {{ . | quote }}
+  {{- end }}
+  {{- with include "timeseries.optional" .Values.baselines.druidAuthHeader }}
+  # Static Druid auth: both keys must be set together for the worker to send the header.
+  DRUID_AUTH_HEADER: {{ . | quote }}
+  {{- end }}
+  {{- with include "timeseries.optional" .Values.baselines.druidAuthValue }}
+  DRUID_AUTH_VALUE: {{ . | quote }}
+  {{- end }}
+  {{- with include "timeseries.optional" .Values.baselines.scanRange }}
+  SCAN_RANGE: {{ . | quote }}
+  {{- end }}
+  {{- with include "timeseries.optional" .Values.baselines.snapshotCacheTtl }}
+  SNAPSHOT_CACHE_TTL: {{ . | quote }}
+  {{- end }}
+  {{- with include "timeseries.optional" .Values.baselines.retrainRetry }}
+  RETRAIN_RETRY: {{ . | quote }}
+  {{- end }}
   {{- if .Values.baselines.workerTtl }}
   # Must stay longer than INTERVAL: a heartbeat written at the end of one tick is
   # read at the start of the next, so a shorter TTL expires before it is seen.
@@ -39,12 +61,14 @@ data:
   # path; exactly how the sibling forecast-store ConfigMap renders today. `baselines.storeHost`
   # overrides the host (and port) only — the credentials and database still come from `postgres.*`,
   # so an install whose store is reached by a different DNS name than `postgres.url` sets it.
+  # Both spellings of that address are accepted (host[:port] and a postgres:// DSN).
   BASELINE_STORE_HOST: {{ $host | quote }}
   BASELINE_STORE_PORT: {{ $port | quote }}
   BASELINE_STORE_DATABASE: {{ .Values.postgres.database | default "" | quote }}
   BASELINE_STORE_USER: {{ .Values.postgres.user | default "" | quote }}
-  BASELINE_STORE_PASSWORD: {{ .Values.postgres.password | default "" | quote }}
-  BASELINE_STORE_SSLMODE: "disable"
+  # BASELINE_STORE_PASSWORD lives in the <release>-store-credentials Secret; the Deployment
+  # `envFrom`s both this ConfigMap and that Secret.
+  BASELINE_STORE_SSLMODE: {{ .Values.postgres.sslMode | quote }}
   KAFKA_BROKERS: {{ .Values.baselines.kafkaBrokers | quote }}
   KAFKA_TOPIC: {{ .Values.baselines.kafkaTopic | quote }}
   LOOKBACK: {{ .Values.baselines.lookback | quote }}

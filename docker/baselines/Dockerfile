@@ -1,5 +1,5 @@
 # Static baselines worker. Source is fetched from GitHub; not copied from a sibling checkout.
-ARG BASELINES_REF=179a1551e4dd1064b93cbdd42d12fb684a20dfcd
+ARG BASELINES_REF=7ec489faafeb85971dd5f5c247aaf0bc37c63913
 
 FROM golang:1.26-bookworm AS build
 ARG BASELINES_REF

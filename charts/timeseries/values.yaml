@@ -3,29 +3,67 @@ druidUrl: ""
 prometheusUrl: ""
 opensearchUrl: ""
 opensearchDatabase: overlay-metrics
+# `postgres.url` is the snapshot store / Postgres datasource address, in either spelling:
+#   host[:port]                          e.g. overlay-postgres.overlay-postgres.svc:5432
+#   scheme://[user[:pass]@]host[:port][/db]   e.g. postgres://overlay:overlay@overlay-postgres:5432/overlay
+# A DSN contributes its host (and port) only: `postgres.user`, `postgres.password` and
+# `postgres.database` stay the source for credentials and database. A value that yields no host
+# fails the render with the value quoted instead of provisioning a bogus one.
+# `postgres.sslMode` is the sslmode every render uses (`disable`, `require`, `verify-ca`,
+# `verify-full`), so a TLS-required server is reachable through the chart.
 postgres:
   url: ""
   database: ""
   user: ""
   password: ""
+  sslMode: disable
 
 grafana:
   enabled: true
   image:
     registry: ghcr.io
     repository: eduard-kolotushin/timeseries-grafana
+    # An image tag is an override, not a delivery channel: with `pullPolicy: IfNotPresent` a node
+    # that already cached a tag keeps serving that copy, so a rebuilt image must be published under
+    # a new immutable tag (a commit sha, or the `vX.Y.Z` release tag) and set here — the sibling
+    # sandbox does exactly that in `make helm-images` (`--set grafana.image.tag=<sha>`).
     tag: "0.1.0"
     pullPolicy: IfNotPresent
   testFramework:
     enabled: false
   persistence:
     enabled: true
+  # The plugin's fits run in this process, so a single request can allocate here (an unbounded
+  # forecast window is one example); without a limit the pod competes with the node instead of
+  # being stopped at its own cgroup. Raising `limits.memory` also raises GOMEMLIMIT, which the
+  # Grafana subchart derives from that value.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 2Gi
   # Backend retrain scheduler. Empty retrainCron leaves the plugin on its own default (0 3 * * *);
   # empty pluginToken sends no Authorization header, which only satisfies a Grafana that does not
   # require auth for /api/ds/query (the sandbox's anonymous Admin). Both are omitted from the app
   # provisioning ConfigMap when empty, so an install that sets neither keeps today's shape.
   retrainCron: ""
   pluginToken: ""
+  # Rollout trigger for the ConfigMaps this Deployment mounts. Grafana provisions only at startup
+  # and the mounts use subPath, so a change must move the pod template. The Grafana subchart does
+  # not template `podAnnotations`; the hooks it does template (`env`, `envFrom*` names, mount
+  # fields) render in the subchart's own value scope, which cannot see this chart's `postgres`
+  # block — so a store-only change is rolled by bumping this revision (`--set
+  # grafana.configRevision=$(date +%s)`), while `retrainCron`/`pluginToken` changes roll on their
+  # own through the checksum below.
+  configRevision: ""
+  env:
+    FORECAST_CONFIG_CHECKSUM: '{{ include "timeseries.grafanaConfigChecksum" . }}'
+  # `postgres.password` reaches Grafana as a Secret, not through a ConfigMap that `kubectl get
+  # configmap -o yaml` would print. The plugin's own store password still arrives as the app's
+  # secureJsonData.storePassword; this is the documented FORECAST_STORE_* fallback spelling.
+  envFromSecrets:
+    - name: '{{ .Release.Name }}-store-credentials'
   grafana.ini:
     paths:
       plugins: /opt/grafana-plugins
@@ -77,6 +115,7 @@ baselines:
   image:
     registry: ghcr.io
     repository: eduard-kolotushin/timeseries-baselines
+    # Same rule as the Grafana image above: a rebuilt worker needs a new immutable tag.
     tag: "0.1.0"
     pullPolicy: IfNotPresent
   druidBroker: ""
@@ -103,6 +142,29 @@ baselines:
   aheadMinutes: 1
   interval: 1m
   calendar: ""
+  # The remaining worker knobs below are read by timeseries-baselines from the process env and are
+  # rendered into `<release>-baselines-env` only when set, so an empty value keeps the worker's own
+  # default. The default is quoted in each comment.
+  # info (default) | debug — debug turns on per-tick Druid and publish logging.
+  logLevel: ""
+  # Whole-request Druid timeout. Default 60s.
+  druidTimeout: ""
+  # Druid request retries. Default 2; `0` disables them (a real setting, so it renders).
+  druidRetries: ""
+  # Druid requests in flight. Default 4.
+  druidMaxInflight: ""
+  # Static auth header/value for a Druid behind a proxy, e.g. header `Authorization` and value
+  # `Basic <base64>`. Both default to empty (no header).
+  druidAuthHeader: ""
+  druidAuthValue: ""
+  # Bounded hash-scan window. Default max(2*lookback, 24h); it must be at least lookback + 2*interval
+  # or the worker rejects the config, because the window clamps a hash's Min and excludes now.
+  scanRange: ""
+  # Snapshot-freshness cache that throttles the per-tick snapshot query. Default 60s.
+  snapshotCacheTtl: ""
+  # Claim lease and the delay before a failed retrain is due again. Default 5m; keep it above
+  # retrainClaimBatch * the plugin's frame-fetch timeout.
+  retrainRetry: ""
   resources:
     requests:
       cpu: 50m

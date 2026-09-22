@@ -1,6 +1,6 @@
 # Grafana OSS with the unsigned forecast plugin, grafadruid-druid-datasource, and grafana-opensearch-datasource.
 # Plugin source is fetched from GitHub; it is not copied from a sibling checkout.
-ARG PLUGIN_REF=8f2a9ff690bcf86e3290774e75d101c448b77567
+ARG PLUGIN_REF=8feecafc14ba2f859d5974cf678130baf9637d0a
 ARG GRAFANA_VERSION=13.1.0
 
 FROM node:22-bookworm AS frontend
@@ -20,9 +20,11 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o dist/gpx_forecast_linux_am
 
 FROM grafana/grafana:${GRAFANA_VERSION}
 ARG GRAFANA_VERSION
+# Pinned: an unpinned `plugins install` silently changes what the images exercise on a rebuild
+# (the sandbox Compose file carries the same versions).
 USER root
-RUN grafana cli --pluginsDir /tmp/cli-plugins plugins install grafadruid-druid-datasource \
- && grafana cli --pluginsDir /tmp/cli-plugins plugins install grafana-opensearch-datasource \
+RUN grafana cli --pluginsDir /tmp/cli-plugins plugins install grafadruid-druid-datasource 1.8.0 \
+ && grafana cli --pluginsDir /tmp/cli-plugins plugins install grafana-opensearch-datasource 2.34.4 \
  && mkdir -p /opt/grafana-plugins \
  && cp -a /tmp/cli-plugins/. /opt/grafana-plugins/ \
  && rm -rf /tmp/cli-plugins

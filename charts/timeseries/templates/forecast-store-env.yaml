@@ -1,10 +1,7 @@
 {{- if .Values.grafana.enabled }}
-{{- $url := .Values.postgres.url | default "" }}
-{{- $host := regexReplaceAll ":\\d+$" $url "" }}
-{{- $port := "5432" }}
-{{- if contains ":" $url }}
-  {{- $port = regexFind "\\d+$" $url }}
-{{- end }}
+{{- $address := include "timeseries.postgresAddress" (dict "raw" .Values.postgres.url) | splitList "|" }}
+{{- $host := index $address 0 }}
+{{- $port := index $address 1 }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -16,6 +13,8 @@ data:
   FORECAST_STORE_PORT: {{ $port | quote }}
   FORECAST_STORE_DATABASE: {{ .Values.postgres.database | default "" | quote }}
   FORECAST_STORE_USER: {{ .Values.postgres.user | default "" | quote }}
-  FORECAST_STORE_PASSWORD: {{ .Values.postgres.password | default "" | quote }}
-  FORECAST_STORE_SSLMODE: "disable"
+  # FORECAST_STORE_PASSWORD lives in the <release>-store-credentials Secret: a ConfigMap is readable
+  # with `kubectl get configmap -o yaml`. Grafana 12.4+ does not forward host env into plugin
+  # processes either, so the plugin's live configuration is the app's secureJsonData.storePassword.
+  FORECAST_STORE_SSLMODE: {{ .Values.postgres.sslMode | quote }}
 {{- end }}

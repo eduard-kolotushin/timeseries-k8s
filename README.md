@@ -80,6 +80,11 @@ Full runbook, including the VM path, verification queries, and the negative cont
 make lint
 ```
 
+`make lint` also renders the sibling sandbox's `helm/timeseries-values.yaml` when that checkout is
+present (CI skips it). `make check-pins` fails when a Dockerfile `PLUGIN_REF`/`BASELINES_REF` is
+neither the sibling head nor an ancestor of it, which is what CI runs on every pull request; both refs
+are bumped in the same pass as the sibling change they carry.
+
 ## Agents
 
 Contributors and coding agents: start with [AGENTS.md](AGENTS.md).

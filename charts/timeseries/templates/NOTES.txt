@@ -19,10 +19,29 @@ The worker publishes from a stored snapshot and trains on a cron, so its Druid c
   --set baselines.hashScanTtl=30m       # cached span scan; publishing re-reads nothing
   --set baselines.defaultRetrainCron='0 3 * * *'
 
-Snapshots, the retrain queue and (with membership=store) the peer set live in Postgres. The worker ConfigMap renders BASELINE_STORE_HOST/PORT/DATABASE/USER/PASSWORD/SSLMODE from the same `postgres` values as the plugin snapshot store; leave `postgres.url` empty and the worker keeps its per-tick fit path:
+The rest of the worker's knobs are rendered only when set, so an empty value keeps the worker default
+(quoted); they reach the pod as LOG_LEVEL, DRUID_TIMEOUT, DRUID_RETRIES, DRUID_MAX_INFLIGHT,
+DRUID_AUTH_HEADER, DRUID_AUTH_VALUE, SCAN_RANGE, SNAPSHOT_CACHE_TTL and RETRAIN_RETRY:
+
+  --set baselines.logLevel=debug        # info (default) | debug
+  --set baselines.druidTimeout=60s      # default 60s
+  --set baselines.druidRetries=2        # default 2; 0 disables retries
+  --set baselines.druidMaxInflight=4    # default 4
+  --set baselines.druidAuthHeader=Authorization --set baselines.druidAuthValue='Basic <base64>'
+  --set baselines.scanRange=48h         # default max(2*lookback, 24h)
+  --set baselines.snapshotCacheTtl=60s  # default 60s
+  --set baselines.retrainRetry=5m       # claim lease / failed-retrain delay, default 5m
+
+Snapshots, the retrain queue and (with membership=store) the peer set live in Postgres. The worker ConfigMap renders BASELINE_STORE_HOST/PORT/DATABASE/USER/SSLMODE from the same `postgres` values as the plugin snapshot store; the password comes from the {{ .Release.Name }}-store-credentials Secret, which both Deployments `envFrom` (a ConfigMap would print it through `kubectl get configmap -o yaml`). Leave `postgres.url` empty and the worker keeps its per-tick fit path:
 
   --set postgres.url=overlay-postgres.overlay-postgres.svc:5432
   --set postgres.database=overlay --set postgres.user=overlay --set postgres.password=overlay
+
+`postgres.url` also accepts a DSN (`postgres://user:pass@host:5432/db`): its host and port are used,
+while credentials and database still come from `postgres.database`/`user`/`password`. A TLS-required
+server is reached with `--set postgres.sslMode=require` (default `disable`), which every render — the
+app/Forecast datasource jsonData, the FORECAST_STORE_*/BASELINE_STORE_* env and the Postgres
+datasource — takes.
 
 `baselines.storeHost` overrides only the rendered host/port (the credentials and database still come from `postgres.*`), which is how an install reaches the same store by a different DNS name:
 
@@ -49,6 +68,13 @@ Images must exist before pods can start. Publish both images to GHCR by pushing 
   make docker-grafana
   make docker-baselines
 
+A tag is an override, not a delivery channel: `pullPolicy: IfNotPresent` means a node that already
+cached a tag keeps serving that copy, so a rebuilt image must be published under a new immutable tag
+(a commit sha, or the `vX.Y.Z` release tag) and pointed at explicitly, e.g.
+`--set grafana.image.tag=<sha> --set baselines.image.tag=<sha>`. The sibling sandbox does exactly that:
+`make helm-images` tags each image with the short sha of the sibling ref its Dockerfile pins and
+`make helm-up`/`make helm-refresh` pass those tags here.
+
 A full Kafka + Druid + Prometheus + OpenSearch + overlay Postgres + this chart stack is sibling timeseries-grafana-sandbox `make helm-up`.
 
 Optional datasource URLs (this chart does not run those servers):
@@ -63,3 +89,14 @@ The forecast app retrains stored panel snapshots from its own backend on a cron,
   --set grafana.pluginToken=<viewer service-account>    # needed when anonymous auth is off
 
 grafana.pluginToken is provisioned as the app's secureJsonData.grafanaToken, the same path as the snapshot-store password. Without a token the scheduler can still fetch frames from a Grafana that does not require auth for /api/ds/query; a query whose snapshot is due retrains it either way.
+
+Grafana provisions its datasources and the forecast app only at startup and every provisioning file is
+mounted with `subPath`, which kubelet never updates in a running pod. Changing `grafana.retrainCron`
+or `grafana.pluginToken` therefore rolls the Grafana pod on its own (the Deployment carries a checksum
+of those values). A change that only affects the store — `postgres.*` lives outside the Grafana
+subchart's value scope, so no checksum can see it — needs an explicit rollout:
+
+  --set grafana.configRevision=$(date +%s)
+
+Grafana's container is also given default requests/limits (2Gi memory) because the plugin's fits run
+inside that process; an unbounded forecast window would otherwise consume the node instead of the pod.

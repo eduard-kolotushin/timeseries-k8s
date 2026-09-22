@@ -1,4 +1,7 @@
 {{- if and .Values.grafana.enabled .Values.postgres.url }}
+{{- $address := include "timeseries.postgresAddress" (dict "raw" .Values.postgres.url) | splitList "|" }}
+{{- $host := index $address 0 }}
+{{- $port := index $address 1 }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -13,11 +16,11 @@ data:
         type: grafana-postgresql-datasource
         uid: overlay-postgres
         access: proxy
-        url: {{ .Values.postgres.url | quote }}
+        url: {{ printf "%s:%s" $host $port | quote }}
         user: {{ .Values.postgres.user | quote }}
         jsonData:
           database: {{ .Values.postgres.database | quote }}
-          sslmode: disable
+          sslmode: {{ .Values.postgres.sslMode | quote }}
           postgresVersion: 1700
           timescaledb: false
         secureJsonData:
