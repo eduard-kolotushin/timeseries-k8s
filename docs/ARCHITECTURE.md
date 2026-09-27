@@ -10,7 +10,7 @@
 | `charts/timeseries/charts/` | Grafana community subchart (fetched, gitignored) |
 | `ci/values.yaml` | Dummy broker URLs for `helm lint` / `helm template` |
 
-Plugin and worker git pins are `ARG` defaults in the Dockerfiles (`PLUGIN_REF=84ad9b61b1b5eaab5239f75fa4f315b0de323471`, `BASELINES_REF=a82e0f30c79d95a7a748c76e1e422d82523e00cd`). They are bumped in the same pass as the sibling change they carry, and CI's `make check-pins` fails when a pin is neither the sibling head nor an ancestor of it.
+Plugin and worker git pins are `ARG` defaults in the Dockerfiles (`PLUGIN_REF=5b50446910f4f4ba7dc6466ea14fd025f77f567c`, `BASELINES_REF=fe0c1cb4bd8fa204bd68fe95d8342e2c2e3b5175`). They are bumped in the same pass as the sibling change they carry, and CI's `make check-pins` fails when a pin is neither the sibling head nor an ancestor of it.
 
 ## Cluster data flow
 
@@ -26,7 +26,7 @@ Grafana's plugin backend retrains stored panel snapshots on a cron (`grafana.ret
 
 1. Node 22: `npm ci` + `npm run build` in the pinned plugin repo (webpack `dist/`).
 2. Go 1.26: `CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o dist/gpx_forecast_linux_amd64 ./pkg` and copy that binary into `dist/forecast-datasource/`.
-3. `grafana cli plugins install grafadruid-druid-datasource 1.8.0` and `… plugins install grafana-opensearch-datasource 2.34.4` (pinned; the sandbox Compose file installs the same versions via `GF_INSTALL_PLUGINS`).
+3. `grafana cli plugins install grafadruid-druid-datasource 1.8.0` and `… plugins install grafana-opensearch-datasource 2.34.4` (pinned; the sandbox Compose file installs the same versions via `GF_PLUGINS_PREINSTALL` (`id@version`), because Grafana 13 ignores the `@version` suffix of the legacy `GF_INSTALL_PLUGINS` and answers 404 for it).
 4. Copy forecast `dist/` and the third-party plugins into `/opt/grafana-plugins`.
 5. `GF_PATHS_PLUGINS=/opt/grafana-plugins` and `GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS` for the forecast app, overlay panel, and forecast datasource IDs.
 6. Run as uid `472`.

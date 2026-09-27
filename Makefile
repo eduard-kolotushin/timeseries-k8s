@@ -36,12 +36,12 @@ helm-deps:
 	$(HELM) --repository-config "$(HELM_REPO_CONFIG)" --repository-cache "$(HELM_REPO_CACHE)" dependency update $(CHART)
 
 lint: helm-deps
-	helm lint $(CHART) -f ci/values.yaml
-	helm template test $(CHART) -f ci/values.yaml >/dev/null
+	$(HELM) lint $(CHART) -f ci/values.yaml
+	$(HELM) template test $(CHART) -f ci/values.yaml >/dev/null
 	@if [ -f "$(SANDBOX_VALUES)" ]; then \
 		echo "lint: rendering $(SANDBOX_VALUES)"; \
-		helm lint $(CHART) -f ci/values.yaml -f "$(SANDBOX_VALUES)"; \
-		helm template test $(CHART) -f ci/values.yaml -f "$(SANDBOX_VALUES)" >/dev/null; \
+		$(HELM) lint $(CHART) -f ci/values.yaml -f "$(SANDBOX_VALUES)"; \
+		$(HELM) template test $(CHART) -f ci/values.yaml -f "$(SANDBOX_VALUES)" >/dev/null; \
 	else \
 		echo "lint: $(SANDBOX_VALUES) is not present, skipped"; \
 	fi
