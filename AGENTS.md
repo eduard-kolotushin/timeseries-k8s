@@ -19,7 +19,7 @@ Kubernetes images and Helm for the forecast Grafana plugin and the baselines wor
 
 - Do not copy plugin or worker source into this repo; Dockerfiles fetch pinned sibling git refs
 - Do not add Kafka, Druid, Prometheus, OpenSearch, or Postgres **servers**, TestData, or sandbox dashboards
-- Stay within v1 unless `docs/INTENTIONS.md` is updated first
+- Stay within v1/v2 unless `docs/INTENTIONS.md` is updated first
 - linux/amd64 only
 - Unsigned plugin load via `allow_loading_unsigned_plugins`, not `GF_DEFAULT_APP_MODE=development`
 - Worker is a Deployment of its own; its replicas are independent of Grafana replicas
