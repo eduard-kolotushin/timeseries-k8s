@@ -1,0 +1,20 @@
+{{- if .Values.compute.enabled }}
+# Ported (non-headless) Service: the plugin process in Grafana POSTs /forecast here. The name is
+# what `computeUrl` in the app provisioning ConfigMap points at, so keep the two in step.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-forecast-compute
+  labels:
+    {{- include "timeseries.labels" . | nindent 4 }}
+    app.kubernetes.io/component: compute
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "timeseries.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: compute
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+{{- end }}

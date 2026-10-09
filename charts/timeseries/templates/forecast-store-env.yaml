@@ -1,4 +1,4 @@
-{{- if .Values.grafana.enabled }}
+{{- if or .Values.grafana.enabled .Values.compute.enabled }}
 {{- $address := include "timeseries.postgresAddress" (dict "raw" .Values.postgres.url) | splitList "|" }}
 {{- $host := index $address 0 }}
 {{- $port := index $address 1 }}

@@ -66,10 +66,42 @@ Port-forward Grafana:
 
   kubectl port-forward svc/{{ .Release.Name }}-grafana 3000:80
 
+The forecast app can also fit somewhere other than Grafana (plugin v16). Enable the standalone compute
+Deployment and the Grafana-managed plugin process forwards every POST /forecast to it and stops running the
+retrain ticker, so fitting capacity scales without adding Grafana replicas:
+
+  --set compute.enabled=true
+  --set compute.token=<shared secret>     # required; the service refuses to start without it
+  --set compute.replicas=2                # scale fitting on its own
+
+Training frames still come from Grafana's own /api/ds/query: `compute.grafanaUrl` defaults to
+http://{{ .Release.Name }}-grafana:80, and a deployment with anonymous auth off also sets
+`grafana.pluginToken` (the compute pod's FORECAST_GRAFANA_TOKEN, and the app's secureJsonData.grafanaToken).
+Store settings come from the same `postgres.*` values the Grafana pod uses. `compute.*` lives outside the
+Grafana subchart's value scope, so — like a store change — it needs an explicit rollout:
+
+  --set grafana.configRevision=$(date +%s)
+
+Scale it independently of Grafana:
+
+  kubectl -n {{ .Release.Namespace }} scale deployment/{{ .Release.Name }}-forecast-compute --replicas=N
+
+Replicas share one Postgres, and the forecast.retrain claim queue hands each due row to exactly one of them.
+Alerting QueryData and the Retrain schedules page stay in the Grafana-managed plugin, so they keep working
+from the same store while the compute Deployment is down; a panel fit then answers 502 with a reason
+instead of silently fitting inside Grafana. The rest of the compute knobs are rendered only when set
+(`compute.maxInflight`, `compute.retrainCron` / `retrainTick` / `retrainLease` / `retrainRetryMax`,
+`compute.snapshotTtl`):
+
+  --set compute.maxInflight=4              # concurrent fits in the service
+  --set compute.retrainCron='*/15 * * * *' # default 0 3 * * *
+  --set compute.snapshotTtl=72h            # retention window; 0 disables
+
 Images must exist before pods can start. Publish both images to GHCR by pushing a v* git tag, or build locally:
 
   make docker-grafana
   make docker-baselines
+  make docker-compute
 
 A tag is an override, not a delivery channel: `pullPolicy: IfNotPresent` means a node that already
 cached a tag keeps serving that copy, so a rebuilt image must be published under a new immutable tag

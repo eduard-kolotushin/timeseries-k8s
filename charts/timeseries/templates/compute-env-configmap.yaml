@@ -1,0 +1,39 @@
+{{- if .Values.compute.enabled }}
+{{- $grafanaUrl := .Values.compute.grafanaUrl }}
+{{- if and (not $grafanaUrl) .Values.grafana.enabled }}
+{{- $grafanaUrl = printf "http://%s-grafana:80" .Release.Name }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-compute-env
+  labels:
+    {{- include "timeseries.labels" . | nindent 4 }}
+    app.kubernetes.io/component: compute
+data:
+  FORECAST_COMPUTE_LISTEN: {{ .Values.compute.listen | quote }}
+  {{- with $grafanaUrl }}
+  # Training frames still come from Grafana's own datasource proxy. The plugin's default
+  # (http://127.0.0.1:3000) reaches Grafana from inside a Grafana pod and from nowhere else, so this
+  # separate pod is pointed at the Grafana Service by default.
+  FORECAST_GRAFANA_URL: {{ . | quote }}
+  {{- end }}
+  {{- with include "timeseries.optional" .Values.compute.maxInflight }}
+  FORECAST_MAX_INFLIGHT: {{ . | quote }}
+  {{- end }}
+  {{- with include "timeseries.optional" .Values.compute.retrainCron }}
+  FORECAST_RETRAIN_CRON: {{ . | quote }}
+  {{- end }}
+  {{- with include "timeseries.optional" .Values.compute.retrainTick }}
+  FORECAST_RETRAIN_TICK: {{ . | quote }}
+  {{- end }}
+  {{- with include "timeseries.optional" .Values.compute.retrainLease }}
+  FORECAST_RETRAIN_LEASE: {{ . | quote }}
+  {{- end }}
+  {{- with include "timeseries.optional" .Values.compute.retrainRetryMax }}
+  FORECAST_RETRAIN_RETRY_MAX: {{ . | quote }}
+  {{- end }}
+  {{- with include "timeseries.optional" .Values.compute.snapshotTtl }}
+  FORECAST_SNAPSHOT_TTL: {{ . | quote }}
+  {{- end }}
+{{- end }}

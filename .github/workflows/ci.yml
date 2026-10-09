@@ -32,6 +32,24 @@ jobs:
           echo "$out" | grep -q 'FORECAST_STORE_HOST: "h.example"'
           echo "$out" | grep -q 'FORECAST_CONFIG_CHECKSUM'
           echo "$out" | grep -q 'name: test-store-credentials'
+      - name: Render the compute service
+        # ci/values.yaml enables compute, so the Deployment/Service/ConfigMap and the app's
+        # computeUrl/computeToken render here; the default values must produce none of it.
+        run: |
+          out=$(helm template test charts/timeseries -f ci/values.yaml)
+          echo "$out" | grep -q 'name: test-forecast-compute'
+          echo "$out" | grep -q 'FORECAST_COMPUTE_LISTEN: ":8080"'
+          echo "$out" | grep -q 'FORECAST_GRAFANA_URL: "http://test-grafana:80"'
+          echo "$out" | grep -q 'computeUrl: "http://test-forecast-compute:8080"'
+          echo "$out" | grep -q 'computeToken: "ci-token"'
+          echo "$out" | grep -q 'FORECAST_COMPUTE_TOKEN'
+          plain=$(helm template test charts/timeseries -f ci/values.yaml --set compute.enabled=false)
+          if echo "$plain" | grep -q 'forecast-compute'; then
+            echo "compute.enabled=false still rendered the compute service" >&2; exit 1
+          fi
+          if echo "$plain" | grep -q 'computeUrl:'; then
+            echo "compute.enabled=false still rendered computeUrl" >&2; exit 1
+          fi
       - name: Check image pins against the sibling heads
         # A Dockerfile pin that is neither the sibling head nor an ancestor of it builds stale
         # code into a released image, which is what `make lint` cannot see.
@@ -76,3 +94,13 @@ jobs:
           tags: |
             ghcr.io/eduard-kolotushin/timeseries-baselines:${{ steps.tags.outputs.version }}
             ghcr.io/eduard-kolotushin/timeseries-baselines:${{ steps.tags.outputs.raw }}
+      - name: Build and push compute image
+        uses: docker/build-push-action@v6
+        with:
+          context: docker/compute
+          file: docker/compute/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/eduard-kolotushin/timeseries-forecast-compute:${{ steps.tags.outputs.version }}
+            ghcr.io/eduard-kolotushin/timeseries-forecast-compute:${{ steps.tags.outputs.raw }}

@@ -1,6 +1,7 @@
 CHART := charts/timeseries
 GRAFANA_IMAGE := ghcr.io/eduard-kolotushin/timeseries-grafana:0.1.0
 BASELINES_IMAGE := ghcr.io/eduard-kolotushin/timeseries-baselines:0.1.0
+COMPUTE_IMAGE := ghcr.io/eduard-kolotushin/timeseries-forecast-compute:0.1.0
 HELM ?= helm
 HELM_REPO_CONFIG := $(CURDIR)/.helm/repositories.yaml
 HELM_REPO_CACHE := $(CURDIR)/.helm/cache
@@ -19,7 +20,7 @@ SHELL := $(GIT_SH)
 endif
 endif
 
-.PHONY: all help lint check-pins helm-deps docker-grafana docker-baselines
+.PHONY: all help lint check-pins helm-deps docker-grafana docker-baselines docker-compute
 
 all: lint
 
@@ -28,6 +29,7 @@ help:
 	@echo "make check-pins       fail when a Dockerfile git pin is stale against its sibling head"
 	@echo "make docker-grafana   build Grafana-with-plugin image"
 	@echo "make docker-baselines build worker image"
+	@echo "make docker-compute   build standalone compute-service image"
 
 # Isolated Grafana helm repo. A leftover global repo (e.g. Bitnami) with a missing
 # index file makes Helm 4 fail even with --skip-refresh.
@@ -53,6 +55,7 @@ check-pins:
 	@set -e; \
 	for spec in \
 		"timeseries-grafana:docker/grafana/Dockerfile:PLUGIN_REF" \
+		"timeseries-grafana:docker/compute/Dockerfile:PLUGIN_REF" \
 		"timeseries-baselines:docker/baselines/Dockerfile:BASELINES_REF"; do \
 		repo=$${spec%%:*}; rest=$${spec#*:}; file=$${rest%%:*}; var=$${rest##*:}; \
 		ref=$$(sed -n "s/^ARG $${var}=//p" "$$file"); \
@@ -77,3 +80,6 @@ docker-grafana:
 
 docker-baselines:
 	docker build -f docker/baselines/Dockerfile -t $(BASELINES_IMAGE) docker/baselines
+
+docker-compute:
+	docker build -f docker/compute/Dockerfile -t $(COMPUTE_IMAGE) docker/compute

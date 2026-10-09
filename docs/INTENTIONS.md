@@ -12,16 +12,17 @@ Deploy the forecast Grafana plugin and the minute-of-week baselines worker on an
 | Chart | `charts/timeseries` (umbrella) |
 | Grafana | custom OSS `grafana/grafana:13.1.0` image with the unsigned forecast plugin baked in |
 | Worker | own Deployment + headless Service (replicas independent of Grafana); image of `timeseries-baselines` `cmd/baselines` |
+| Compute | optional own Deployment + ported Service (replicas independent of Grafana, plugin v16); image of `timeseries-grafana` `cmd/compute`, off by default |
 | Kafka / Druid | cluster-owned; URLs via Helm values (sandbox Helm path can install them) |
 | Prometheus / OpenSearch / Postgres | cluster-owned; optional datasource URLs via Helm values (empty default). This chart does not run those servers |
-| Images | linux/amd64; GHCR `ghcr.io/eduard-kolotushin/timeseries-grafana` and `…/timeseries-baselines` |
+| Images | linux/amd64; GHCR `ghcr.io/eduard-kolotushin/timeseries-grafana`, `…/timeseries-baselines` and `…/timeseries-forecast-compute` |
 | Plugin load | `GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS` (not development mode, not grafana.com signing) |
 | Auth | Grafana Helm admin secret; no anonymous Admin (sandbox values may override) |
-| Source pins | Dockerfiles clone sibling git (plugin `a62e12b37f8cde2f29e199e8b57de3271751f5c2`, worker `a886d144af088851f90eb6d5e519a843ba3b61fe`) |
+| Source pins | Dockerfiles clone sibling git (plugin `60a982c544beadf7a3263c96aa905b43242a3f4c` — `docker/grafana/Dockerfile` and `docker/compute/Dockerfile` —, worker `a886d144af088851f90eb6d5e519a843ba3b61fe`) |
 
-Both pins are `ARG` defaults in `docker/grafana/Dockerfile` and `docker/baselines/Dockerfile`, and
-they are bumped in the same pass as the sibling change they carry; `make check-pins` (in CI) fails when
-a pin is neither the sibling head nor an ancestor of it.
+Both pins are `ARG` defaults in `docker/grafana/Dockerfile`, `docker/compute/Dockerfile` and
+`docker/baselines/Dockerfile`, and they are bumped in the same pass as the sibling change they carry;
+`make check-pins` (in CI) fails when a pin is neither the sibling head nor an ancestor of it.
 
 ## v1 must-have
 
@@ -50,7 +51,15 @@ a pin is neither the sibling head nor an ancestor of it.
 - Fleet membership source is a value: `baselines.membership` (default `dns`) reaches the pod through the ConfigMap only, so the Deployment keeps `SHARD_ID` (pod IP) and `SHARD_DNS` (headless Service) and the verified headless path stays the chart default. `store` selects the Postgres heartbeat (`baselines.workers`) that the sandbox uses
 - The plugin scheduler's own settings are provisionable: `grafana.retrainCron` → app `jsonData.retrainCron`, `grafana.pluginToken` → `secureJsonData.grafanaToken` (a Viewer service-account token for `POST /api/ds/query` when anonymous auth is off). Both are omitted when empty, so the app ConfigMap keeps its current shape by default
 
-## v1 non-goals
+## v4 must-have
+
+- **Standalone forecast compute service** (plugin v16): `docker/compute/Dockerfile` (pin `PLUGIN_REF`, same as the Grafana Dockerfile) builds `gpx_forecast_compute` from `timeseries-grafana` `cmd/compute` on distroless, built by `make docker-compute`, published by the `v*` tag job, and verified by `make check-pins`
+- **`compute.*` values** render a Deployment (`<release>-forecast-compute`, `compute.replicas`), a ported ClusterIP Service on 8080 and an env ConfigMap: `FORECAST_COMPUTE_LISTEN`, `FORECAST_GRAFANA_URL` (defaulting to `http://<release>-grafana:80`, because the plugin's loopback default only reaches Grafana from inside a Grafana pod) and, when set, `FORECAST_MAX_INFLIGHT` / `FORECAST_RETRAIN_CRON` / `FORECAST_RETRAIN_TICK` / `FORECAST_RETRAIN_LEASE` / `FORECAST_RETRAIN_RETRY_MAX` / `FORECAST_SNAPSHOT_TTL`. The Deployment `envFrom`s the same `<release>-forecast-store` ConfigMap and `<release>-store-credentials` Secret Grafana uses, plus a `<release>-compute-credentials` Secret holding `FORECAST_COMPUTE_TOKEN` (`compute.token`, **required**: the render fails without it, because the service refuses to start unauthenticated) and `FORECAST_GRAFANA_TOKEN` (`grafana.pluginToken`) — no credential is rendered into a ConfigMap, and the pod template carries checksums for all three so a values-only change rolls it
+- **Grafana is switched by provisioning, not env**: `compute.enabled` adds `computeUrl: http://<release>-forecast-compute:8080` to the app ConfigMap's `jsonData` and `computeToken` to its `secureJsonData` (rendered by the parent chart — the Grafana subchart's value scope cannot see `compute.*`, and Grafana 12.4+ does not forward host env into plugin processes anyway). The plugin process then forwards every `POST /forecast` and runs no retrain ticker; alerting `QueryData` and the Retrain schedules page stay in that process, so they keep working from the same store while the compute Deployment is down
+- **Default `compute.enabled=false` renders none of it**, so an existing install is unchanged. Because `compute.*` lives outside the Grafana subchart's scope, a compute change needs `grafana.configRevision` bumped to roll the Grafana pod — the same rule as `postgres.*`
+- **Fitting scales on its own**: `compute.replicas`, or `kubectl scale deployment/<release>-forecast-compute --replicas=N`. Replicas share one Postgres, and the plugin's `forecast.retrain` claim queue hands each due row to exactly one of them
+
+## v1/v2/v3/v4 non-goals
 
 Do not add these without first updating this document:
 
@@ -61,8 +70,11 @@ Do not add these without first updating this document:
 - Grafana.com plugin signing
 - Plugin or worker source (siblings `timeseries-grafana` and `timeseries-baselines`)
 - arm64 images
-- Worker HTTP `/healthz`
+- Worker HTTP `/healthz`; the compute service's `/healthz` is the named exception (unauthenticated and coarse, so a probe can call it) and it is not a metrics or admin endpoint
 - Folding the ticker into Grafana
+- Compute-service source or a second `POST /forecast` implementation in this repo: the image builds the plugin's own `cmd/compute`, and the chart only deploys it
+- A compute URL the Grafana subchart's `grafana.env` could set: the plugin process does not receive host env (Grafana 12.4+), so the switch is provisioning only
+- Exposing the compute Service outside the cluster (it is ClusterIP, and only the plugin process talks to it)
 
 ## v2 non-goals
 
@@ -78,4 +90,5 @@ Do not add these without first updating this document:
 - Dockerfiles do not copy sibling source trees; they fetch a pinned git ref
 - `baselines.druidBroker` and `baselines.kafkaBrokers` are required when the worker is enabled
 - The worker runs as its own Deployment and does not require `grafana.enabled`; disable it with `baselines.enabled=false`
-- GitHub Actions on `main` runs `helm lint` and `helm template`
+- GitHub Actions on `main` runs `helm lint` and `helm template`, renders the non-default postgres/rollout and compute values (`ci/values.yaml` enables `compute`, and a render with `compute.enabled=false` must produce no compute object and no `computeUrl`), and runs `make check-pins`
+- `compute.token` is required when `compute.enabled` is true (the render fails rather than letting the service CrashLoop), and no credential — store password, compute token, Grafana token — is rendered into a ConfigMap

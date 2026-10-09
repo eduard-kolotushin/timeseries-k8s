@@ -1,0 +1,67 @@
+{{- if .Values.compute.enabled }}
+{{- $port := .Values.compute.listen | trimPrefix ":" | default "8080" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-forecast-compute
+  labels:
+    {{- include "timeseries.labels" . | nindent 4 }}
+    app.kubernetes.io/component: compute
+spec:
+  replicas: {{ .Values.compute.replicas }}
+  selector:
+    matchLabels:
+      {{- include "timeseries.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: compute
+  template:
+    metadata:
+      labels:
+        {{- include "timeseries.labels" . | nindent 8 }}
+        app.kubernetes.io/component: compute
+      annotations:
+        # The service reads its settings from the ConfigMaps/Secrets via envFrom, and env vars are
+        # captured at container start: without these checksums a values-only change edits the
+        # ConfigMap, leaves the pod template identical, and helm upgrade reports success while the
+        # running pods keep the old store, Grafana URL and retrain settings.
+        checksum/compute-env: {{ include (print $.Template.BasePath "/compute-env-configmap.yaml") . | sha256sum }}
+        checksum/store-credentials: {{ include (print $.Template.BasePath "/store-credentials.yaml") . | sha256sum }}
+        checksum/compute-credentials: {{ include (print $.Template.BasePath "/compute-credentials.yaml") . | sha256sum }}
+    spec:
+      containers:
+        - name: compute
+          image: "{{ .Values.compute.image.registry }}/{{ .Values.compute.image.repository }}:{{ .Values.compute.image.tag }}"
+          imagePullPolicy: {{ .Values.compute.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-compute-env
+            # The same snapshot-store ConfigMap and credentials Secret Grafana uses, so both halves
+            # of a split deployment read one `postgres.*` block.
+            - configMapRef:
+                name: {{ .Release.Name }}-forecast-store
+            - secretRef:
+                name: {{ .Release.Name }}-store-credentials
+            - secretRef:
+                name: {{ .Release.Name }}-compute-credentials
+          ports:
+            - name: http
+              containerPort: {{ $port | int }}
+          # The service's /healthz needs the shared token (probes cannot send one) and answers a
+          # coarse ok/error for operators; a TCP connect is the right readiness signal here: it is
+          # exactly "the listener is up", which is all a forwarded request needs.
+          readinessProbe:
+            tcpSocket:
+              port: http
+          livenessProbe:
+            tcpSocket:
+              port: http
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          resources:
+            {{- toYaml .Values.compute.resources | nindent 12 }}
+{{- end }}

@@ -179,3 +179,44 @@ baselines:
       memory: 64Mi
     limits:
       memory: 256Mi
+
+# Standalone compute service (forecast plugin v16). When enabled, the plugin process in Grafana
+# forwards every POST /forecast to this Deployment and starts no retrain ticker: fitting and the
+# ticker live here, so capacity scales with `compute.replicas` instead of Grafana replicas. Default
+# off keeps today's inline behaviour. Replicas share `postgres.*`, and the forecast.retrain claim
+# queue hands each due row to exactly one of them.
+compute:
+  enabled: false
+  replicas: 2
+  image:
+    registry: ghcr.io
+    repository: eduard-kolotushin/timeseries-forecast-compute
+    # Same rule as the other images: a rebuilt service needs a new immutable tag.
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
+  # Address the service listens on inside the pod (`FORECAST_COMPUTE_LISTEN`). The Service and the
+  # plugin's computeUrl both use port 8080, so change this only together with the chart's Service.
+  listen: ":8080"
+  # Shared secret the plugin sends as `Authorization: Bearer …`. Required when enabled: the render
+  # fails without it, because the service refuses to start unauthenticated.
+  token: ""
+  # Frames are still fetched through Grafana's own /api/ds/query. Empty renders the in-cluster
+  # Grafana Service (`http://<release>-grafana:80`), which is what a separate pod needs — the
+  # plugin's own default (`http://127.0.0.1:3000`) only works inside a Grafana pod.
+  grafanaUrl: ""
+  # Concurrent fits in this Deployment (`FORECAST_MAX_INFLIGHT`). The plugin process's own limiter
+  # bounds forwards, not fits, so this is the knob that sizes compute CPU.
+  maxInflight: ""
+  # Retrain scheduler of the service (the plugin's is off in this mode). Empty keeps the plugin's
+  # defaults: cron `0 3 * * *`, tick `30s`, lease `6m`, retry cap `1h`, snapshot TTL `72h`.
+  retrainCron: ""
+  retrainTick: ""
+  retrainLease: ""
+  retrainRetryMax: ""
+  snapshotTtl: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 2Gi

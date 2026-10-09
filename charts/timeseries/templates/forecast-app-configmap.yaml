@@ -15,7 +15,7 @@ data:
       - type: eduardkolotushin-forecast-app
         org_id: 1
         disabled: false
-        {{- if or $host .Values.grafana.retrainCron }}
+        {{- if or $host .Values.grafana.retrainCron .Values.compute.enabled }}
         jsonData:
           {{- if $host }}
           storeHost: {{ $host | quote }}
@@ -27,14 +27,23 @@ data:
           {{- if .Values.grafana.retrainCron }}
           retrainCron: {{ .Values.grafana.retrainCron | quote }}
           {{- end }}
+          {{- if .Values.compute.enabled }}
+          # v16: fitting and the retrain ticker run in the compute Deployment, so this process
+          # forwards every POST /forecast to it and starts no ticker. Rendered here (not through
+          # `grafana.env`) because the Grafana subchart's value scope cannot see `compute.*`.
+          computeUrl: {{ printf "http://%s-forecast-compute:8080" .Release.Name | quote }}
+          {{- end }}
         {{- end }}
-        {{- if or $host .Values.grafana.pluginToken }}
+        {{- if or $host .Values.grafana.pluginToken .Values.compute.enabled }}
         secureJsonData:
           {{- if $host }}
           storePassword: {{ .Values.postgres.password | quote }}
           {{- end }}
           {{- if .Values.grafana.pluginToken }}
           grafanaToken: {{ .Values.grafana.pluginToken | quote }}
+          {{- end }}
+          {{- if .Values.compute.enabled }}
+          computeToken: {{ .Values.compute.token | quote }}
           {{- end }}
         {{- end }}
 {{- end }}

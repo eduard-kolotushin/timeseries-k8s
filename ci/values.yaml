@@ -1,3 +1,8 @@
 baselines:
   druidBroker: http://druid-broker.example.svc:8082
   kafkaBrokers: kafka.example.svc:9092
+# Renders the v16 compute Deployment/Service/ConfigMap and the app's computeUrl/computeToken, so
+# `make lint` covers the new templates.
+compute:
+  enabled: true
+  token: ci-token
