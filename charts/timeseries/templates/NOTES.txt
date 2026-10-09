@@ -21,7 +21,8 @@ The worker publishes from a stored snapshot and trains on a cron, so its Druid c
 
 The rest of the worker's knobs are rendered only when set, so an empty value keeps the worker default
 (quoted); they reach the pod as LOG_LEVEL, DRUID_TIMEOUT, DRUID_RETRIES, DRUID_MAX_INFLIGHT,
-DRUID_AUTH_HEADER, DRUID_AUTH_VALUE, SCAN_RANGE, SNAPSHOT_CACHE_TTL and RETRAIN_RETRY:
+DRUID_AUTH_HEADER, DRUID_AUTH_VALUE, SCAN_RANGE, SNAPSHOT_CACHE_TTL, RETRAIN_RETRY, RETRAIN_LEASE
+and RETRAIN_RETRY_MAX:
 
   --set baselines.logLevel=debug        # info (default) | debug
   --set baselines.druidTimeout=60s      # default 60s
@@ -30,7 +31,9 @@ DRUID_AUTH_HEADER, DRUID_AUTH_VALUE, SCAN_RANGE, SNAPSHOT_CACHE_TTL and RETRAIN_
   --set baselines.druidAuthHeader=Authorization --set baselines.druidAuthValue='Basic <base64>'
   --set baselines.scanRange=48h         # default max(2*lookback, 24h)
   --set baselines.snapshotCacheTtl=60s  # default 60s
-  --set baselines.retrainRetry=5m       # claim lease / failed-retrain delay, default 5m
+  --set baselines.retrainRetry=5m       # retry-backoff base and lease floor, default 5m
+  --set baselines.retrainLease=15m      # claim work lease; unset derives it from the scan
+  --set baselines.retrainRetryMax=1h    # backoff cap, default 1h
 
 Snapshots, the retrain queue and (with membership=store) the peer set live in Postgres. The worker ConfigMap renders BASELINE_STORE_HOST/PORT/DATABASE/USER/SSLMODE from the same `postgres` values as the plugin snapshot store; the password comes from the {{ .Release.Name }}-store-credentials Secret, which both Deployments `envFrom` (a ConfigMap would print it through `kubectl get configmap -o yaml`). Leave `postgres.url` empty and the worker keeps its per-tick fit path:
 

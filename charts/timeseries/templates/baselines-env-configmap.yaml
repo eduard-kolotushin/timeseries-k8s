@@ -47,6 +47,15 @@ data:
   {{- with include "timeseries.optional" .Values.baselines.retrainRetry }}
   RETRAIN_RETRY: {{ . | quote }}
   {{- end }}
+  {{- with include "timeseries.optional" .Values.baselines.retrainLease }}
+  # The work lease each claim is extended to right before its fit. Unset, the worker derives it
+  # from the bounded scan: max(RETRAIN_RETRY, ceil(LOOKBACK / DRUID_MAX_RANGE) * DRUID_TIMEOUT + 1m).
+  RETRAIN_LEASE: {{ . | quote }}
+  {{- end }}
+  {{- with include "timeseries.optional" .Values.baselines.retrainRetryMax }}
+  # Ceiling on the exponential retry backoff for a row that keeps failing. Default 1h.
+  RETRAIN_RETRY_MAX: {{ . | quote }}
+  {{- end }}
   {{- if .Values.baselines.workerTtl }}
   # Must stay longer than INTERVAL: a heartbeat written at the end of one tick is
   # read at the start of the next, so a shorter TTL expires before it is seen.

@@ -163,9 +163,16 @@ baselines:
   scanRange: ""
   # Snapshot-freshness cache that throttles the per-tick snapshot query. Default 60s.
   snapshotCacheTtl: ""
-  # Claim lease and the delay before a failed retrain is due again. Default 5m; keep it above
-  # retrainClaimBatch * the plugin's frame-fetch timeout.
+  # The retry backoff's base delay and the claim lease's floor — not the lease itself: the worker
+  # claims with RETRAIN_LEASE (below) so one fit, up to ceil(lookback / druidMaxRange) sequential
+  # Druid requests, cannot outlive its claim and be retrained twice at once. Default 5m.
   retrainRetry: ""
+  # Claim lease. Empty derives it from the work: max(retrainRetry, ceil(lookback / druidMaxRange)
+  # * druidTimeout + 1m) — 15m at the defaults (336h / 24h / 60s).
+  retrainLease: ""
+  # Cap on the retry backoff (default 1h). The worker refuses one that does not exceed
+  # retrainRetry, because that would be a fixed delay rather than a backoff.
+  retrainRetryMax: ""
   resources:
     requests:
       cpu: 50m
