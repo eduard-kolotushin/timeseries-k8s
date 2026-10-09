@@ -1,4 +1,5 @@
-{{- if and .Values.grafana.enabled .Values.opensearchUrl }}
+{{/* Always rendered: see druid-datasource-configmap.yaml (the mount is unconditional, so the file must exist). */}}
+{{- if .Values.grafana.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -8,6 +9,7 @@ metadata:
 data:
   opensearch.yaml: |
     apiVersion: 1
+    {{- if .Values.opensearchUrl }}
     datasources:
       - name: OpenSearch
         type: grafana-opensearch-datasource
@@ -21,4 +23,7 @@ data:
           timeField: "@timestamp"
           pplEnabled: true
           timeInterval: 1m
+    {{- else }}
+    datasources: []
+    {{- end }}
 {{- end }}

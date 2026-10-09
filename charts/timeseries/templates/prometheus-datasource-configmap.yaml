@@ -1,4 +1,5 @@
-{{- if and .Values.grafana.enabled .Values.prometheusUrl }}
+{{/* Always rendered: see druid-datasource-configmap.yaml (the mount is unconditional, so the file must exist). */}}
+{{- if .Values.grafana.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -8,10 +9,14 @@ metadata:
 data:
   prometheus.yaml: |
     apiVersion: 1
+    {{- if .Values.prometheusUrl }}
     datasources:
       - name: Prometheus
         type: prometheus
         uid: prometheus
         access: proxy
         url: {{ .Values.prometheusUrl | quote }}
+    {{- else }}
+    datasources: []
+    {{- end }}
 {{- end }}

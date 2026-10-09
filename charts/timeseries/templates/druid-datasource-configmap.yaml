@@ -1,4 +1,8 @@
-{{- if and .Values.grafana.enabled .Values.druidUrl }}
+{{/* Rendered whenever Grafana is on, even with no URL: the subchart's `extraConfigmapMounts` for
+this file is unconditional, and an `optional: true` mount of a ConfigMap that does not exist becomes
+a *directory* at the file path, which makes Grafana refuse to start ("read …/druid.yaml: is a
+directory"). An empty datasource list keeps the file present and provisions nothing. */}}
+{{- if .Values.grafana.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -8,6 +12,7 @@ metadata:
 data:
   druid.yaml: |
     apiVersion: 1
+    {{- if .Values.druidUrl }}
     datasources:
       - name: Druid
         type: grafadruid-druid-datasource
@@ -15,4 +20,7 @@ data:
         access: proxy
         jsonData:
           connection.url: {{ .Values.druidUrl | quote }}
+    {{- else }}
+    datasources: []
+    {{- end }}
 {{- end }}

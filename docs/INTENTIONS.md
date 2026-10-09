@@ -18,7 +18,7 @@ Deploy the forecast Grafana plugin and the minute-of-week baselines worker on an
 | Images | linux/amd64; GHCR `ghcr.io/eduard-kolotushin/timeseries-grafana`, `…/timeseries-baselines` and `…/timeseries-forecast-compute` |
 | Plugin load | `GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS` (not development mode, not grafana.com signing) |
 | Auth | Grafana Helm admin secret; no anonymous Admin (sandbox values may override) |
-| Source pins | Dockerfiles clone sibling git (plugin `60a982c544beadf7a3263c96aa905b43242a3f4c` — `docker/grafana/Dockerfile` and `docker/compute/Dockerfile` —, worker `a886d144af088851f90eb6d5e519a843ba3b61fe`) |
+| Source pins | Dockerfiles clone sibling git (plugin `da363f4a552b20b70356b2c1abfeecfd573875e6` — `docker/grafana/Dockerfile` and `docker/compute/Dockerfile` —, worker `a886d144af088851f90eb6d5e519a843ba3b61fe`) |
 
 Both pins are `ARG` defaults in `docker/grafana/Dockerfile`, `docker/compute/Dockerfile` and
 `docker/baselines/Dockerfile`, and they are bumped in the same pass as the sibling change they carry;
@@ -92,3 +92,4 @@ Do not add these without first updating this document:
 - The worker runs as its own Deployment and does not require `grafana.enabled`; disable it with `baselines.enabled=false`
 - GitHub Actions on `main` runs `helm lint` and `helm template`, renders the non-default postgres/rollout and compute values (`ci/values.yaml` enables `compute`, and a render with `compute.enabled=false` must produce no compute object and no `computeUrl`), and runs `make check-pins`
 - `compute.token` is required when `compute.enabled` is true (the render fails rather than letting the service CrashLoop), and no credential — store password, compute token, Grafana token — is rendered into a ConfigMap
+- Every datasource provisioning file exists whenever Grafana is on, even with no URL: the subchart's mounts are unconditional, so a missing ConfigMap would become a directory at the file path and Grafana would not start. CI renders the URL-less combination (`--set postgres.url= druidUrl= prometheusUrl= opensearchUrl=`) and requires all four ConfigMaps

@@ -1,4 +1,12 @@
-{{- if and .Values.grafana.enabled .Values.postgres.url }}
+{{/*
+Always rendered when Grafana is on, even with no `postgres.url`: the subchart's
+`extraConfigmapMounts` for this file is unconditional, and an `optional: true` mount of a ConfigMap
+that does not exist becomes a *directory* at the file path, which makes Grafana refuse to start
+("read …/postgres.yaml: is a directory"). With no URL the file carries an empty datasource list, so
+the store keys simply provision nothing (exactly how the forecast app and datasource render an empty
+Dsn in that case).
+*/}}
+{{- if .Values.grafana.enabled }}
 {{- $address := include "timeseries.postgresAddress" (dict "raw" .Values.postgres.url) | splitList "|" }}
 {{- $host := index $address 0 }}
 {{- $port := index $address 1 }}
@@ -11,6 +19,7 @@ metadata:
 data:
   postgres.yaml: |
     apiVersion: 1
+    {{- if .Values.postgres.url }}
     datasources:
       - name: Overlay Postgres
         type: grafana-postgresql-datasource
@@ -25,4 +34,7 @@ data:
           timescaledb: false
         secureJsonData:
           password: {{ .Values.postgres.password | quote }}
+    {{- else }}
+    datasources: []
+    {{- end }}
 {{- end }}

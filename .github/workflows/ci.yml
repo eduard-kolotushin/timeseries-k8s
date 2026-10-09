@@ -50,6 +50,18 @@ jobs:
           if echo "$plain" | grep -q 'computeUrl:'; then
             echo "compute.enabled=false still rendered computeUrl" >&2; exit 1
           fi
+      - name: Render a URL-less install
+        # The subchart's datasource ConfigMap mounts are unconditional, so an `optional: true` mount
+        # of a ConfigMap that does not exist becomes a *directory* at the file path and Grafana
+        # refuses to start ("read …/druid.yaml: is a directory"). Every one of those files must exist
+        # even with no URL, carrying an empty datasource list.
+        run: |
+          out=$(helm template test charts/timeseries -f ci/values.yaml \
+            --set postgres.url= --set druidUrl= --set prometheusUrl= --set opensearchUrl=)
+          for n in druid prometheus opensearch postgres; do
+            echo "$out" | grep -q "name: test-$n-datasource" || { echo "no $n datasource ConfigMap" >&2; exit 1; }
+          done
+          echo "$out" | grep -q 'datasources: \[\]'
       - name: Check image pins against the sibling heads
         # A Dockerfile pin that is neither the sibling head nor an ancestor of it builds stale
         # code into a released image, which is what `make lint` cannot see.
