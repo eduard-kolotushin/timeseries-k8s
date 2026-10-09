@@ -214,9 +214,16 @@ compute:
   retrainLease: ""
   retrainRetryMax: ""
   snapshotTtl: ""
+  # CPU limit 200m: a fit is CPU-bound, so this is what keeps a burst of large fits from starving
+  # the rest of the node (Grafana, the datasources and the store usually share it). It throttles the
+  # service, not the caller: with `maxInflight` slots per pod, throughput becomes roughly
+  # `maxInflight / (fit CPU / 0.2)` instead of "as many as the node has cores". Raise it (or drop it)
+  # where the compute Deployment has the node to itself — a 100k-point fit measured ~20 ms unlimited
+  # and is measured in the hundreds of ms under this limit.
   resources:
     requests:
       cpu: 100m
       memory: 256Mi
     limits:
+      cpu: 200m
       memory: 2Gi
