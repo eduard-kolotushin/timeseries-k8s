@@ -1,3 +1,8 @@
+grafana:
+  # Renders the app's `grafanaToken: $FORECAST_GRAFANA_TOKEN` reference and the
+  # <release>-plugin-credentials Secret that backs it, so `make lint` and the render checks below
+  # cover the token path too.
+  pluginToken: ci-plugin-token
 baselines:
   druidBroker: http://druid-broker.example.svc:8082
   kafkaBrokers: kafka.example.svc:9092

@@ -25,7 +25,7 @@ endif
 all: lint
 
 help:
-	@echo "make lint             helm dependency update, lint, template (sandbox values when present)"
+	@echo "make lint             helm dependency build, lint, template (sandbox values when present)"
 	@echo "make check-pins       fail when a Dockerfile git pin is stale against its sibling head"
 	@echo "make docker-grafana   build Grafana-with-plugin image"
 	@echo "make docker-baselines build worker image"
@@ -33,9 +33,11 @@ help:
 
 # Isolated Grafana helm repo. A leftover global repo (e.g. Bitnami) with a missing
 # index file makes Helm 4 fail even with --skip-refresh.
+# `dependency build`, not `update`: build resolves from the tracked Chart.lock and never rewrites it,
+# so a lint can never mutate a tracked file (update re-resolves and stamps a fresh `generated`).
 helm-deps:
 	$(HELM) --repository-config "$(HELM_REPO_CONFIG)" --repository-cache "$(HELM_REPO_CACHE)" repo add grafana $(HELM_GRAFANA_REPO) --force-update
-	$(HELM) --repository-config "$(HELM_REPO_CONFIG)" --repository-cache "$(HELM_REPO_CACHE)" dependency update $(CHART)
+	$(HELM) --repository-config "$(HELM_REPO_CONFIG)" --repository-cache "$(HELM_REPO_CACHE)" dependency build $(CHART)
 
 lint: helm-deps
 	$(HELM) lint $(CHART) -f ci/values.yaml

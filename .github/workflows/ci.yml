@@ -41,7 +41,11 @@ jobs:
           echo "$out" | grep -q 'FORECAST_COMPUTE_LISTEN: ":8080"'
           echo "$out" | grep -q 'FORECAST_GRAFANA_URL: "http://test-grafana:80"'
           echo "$out" | grep -q 'computeUrl: "http://test-forecast-compute:8080"'
-          echo "$out" | grep -q 'computeToken: "ci-token"'
+          # The tokens are `$VAR` references Grafana expands from the Grafana Deployment's env (the
+          # <release>-plugin-credentials Secret): the provisioning ConfigMap must hold no literal.
+          echo "$out" | grep -q 'computeToken: \$FORECAST_COMPUTE_TOKEN'
+          echo "$out" | grep -q 'grafanaToken: \$FORECAST_GRAFANA_TOKEN'
+          echo "$out" | grep -q 'name: test-plugin-credentials'
           echo "$out" | grep -q 'FORECAST_COMPUTE_TOKEN'
           plain=$(helm template test charts/timeseries -f ci/values.yaml --set compute.enabled=false)
           if echo "$plain" | grep -q 'forecast-compute'; then
@@ -62,12 +66,37 @@ jobs:
             echo "$out" | grep -q "name: test-$n-datasource" || { echo "no $n datasource ConfigMap" >&2; exit 1; }
           done
           echo "$out" | grep -q 'datasources: \[\]'
+      - name: Render no credential into a ConfigMap
+        # A credential literal in a provisioning ConfigMap is readable with `kubectl get configmap
+        # -o yaml`. Grafana expands the `$VAR` references in those files from the Grafana
+        # Deployment's env, which the two Secret envFroms fill — so the ConfigMaps must contain a
+        # reference and no value, and the Secrets must contain the values.
+        run: |
+          set -e
+          probe_args='--set postgres.url=postgres://u:p@h.example:5432/db --set postgres.password=PROBEPW1 --set grafana.pluginToken=PROBETOK2 --set compute.token=PROBETOK3'
+          for f in forecast-app postgres-datasource forecast-datasource; do
+            rendered=$(helm template test charts/timeseries -f ci/values.yaml $probe_args \
+              --show-only "templates/$f-configmap.yaml")
+            if echo "$rendered" | grep -q 'PROBEPW1\|PROBETOK2\|PROBETOK3'; then
+              echo "$f renders a credential literal" >&2; exit 1
+            fi
+            echo "$rendered" | grep -q '\$FORECAST_' || {
+              echo "$f renders no credential reference" >&2; exit 1; }
+          done
+          secrets=$(helm template test charts/timeseries -f ci/values.yaml $probe_args \
+            --show-only templates/plugin-credentials.yaml \
+            --show-only templates/store-credentials.yaml)
+          for v in PROBEPW1 PROBETOK2 PROBETOK3; do
+            echo "$secrets" | grep -q "$(printf '%s' "$v" | base64 -w0)" || {
+              echo "$v is in no Secret" >&2; exit 1; }
+          done
       - name: Check image pins against the sibling heads
         # A Dockerfile pin that is neither the sibling head nor an ancestor of it builds stale
         # code into a released image, which is what `make lint` cannot see.
         run: make check-pins
 
   images:
+    needs: helm
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:

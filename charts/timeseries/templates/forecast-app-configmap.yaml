@@ -35,15 +35,19 @@ data:
           {{- end }}
         {{- end }}
         {{- if or $host .Values.grafana.pluginToken .Values.compute.enabled }}
+        # No credential is written here: Grafana expands each `$VAR` from its own process env,
+        # which the Grafana Deployment fills from the <release>-store-credentials and
+        # <release>-plugin-credentials Secrets. A literal would be printed by
+        # `kubectl get configmap -o yaml`.
         secureJsonData:
           {{- if $host }}
-          storePassword: {{ .Values.postgres.password | quote }}
+          storePassword: $FORECAST_STORE_PASSWORD
           {{- end }}
           {{- if .Values.grafana.pluginToken }}
-          grafanaToken: {{ .Values.grafana.pluginToken | quote }}
+          grafanaToken: $FORECAST_GRAFANA_TOKEN
           {{- end }}
           {{- if .Values.compute.enabled }}
-          computeToken: {{ .Values.compute.token | quote }}
+          computeToken: $FORECAST_COMPUTE_TOKEN
           {{- end }}
         {{- end }}
 {{- end }}

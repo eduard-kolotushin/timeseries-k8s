@@ -8,6 +8,14 @@ metadata:
     app.kubernetes.io/component: baselines
 spec:
   replicas: {{ .Values.baselines.replicas }}
+  # A rolling update briefly runs two pods — with one replica, surge-first so publishing never has a
+  # gap. The rendezvous peer set tolerates the overlap: a hash the newcomer and the old pod both
+  # claim is duplicate work, and the claim queue still fits each retrain row exactly once.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       {{- include "timeseries.selectorLabels" . | nindent 6 }}
@@ -27,6 +35,17 @@ spec:
         # carries everything else), so a rotated password has to move the pod template too.
         checksum/store-credentials: {{ include (print $.Template.BasePath "/store-credentials.yaml") . | sha256sum }}
     spec:
+      # The worker never calls the API server — its peer set comes from the headless Service
+      # (SHARD_DNS) or the heartbeat table — so a mounted ServiceAccount token would only widen what
+      # a compromised worker could reach.
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      # SIGTERM cancels the in-flight fit and releases every held claim (one UPDATE per row) instead
+      # of waiting out the lease, so a drained pod needs only enough grace to finish those writes;
+      # 60s leaves room for a pod stopped mid-Druid-read on top of the default 30s.
+      terminationGracePeriodSeconds: 60
       containers:
         - name: baselines
           image: "{{ .Values.baselines.image.registry }}/{{ .Values.baselines.image.repository }}:{{ .Values.baselines.image.tag }}"

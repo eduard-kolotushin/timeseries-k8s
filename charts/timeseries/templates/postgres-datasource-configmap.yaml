@@ -33,7 +33,10 @@ data:
           postgresVersion: 1700
           timescaledb: false
         secureJsonData:
-          password: {{ .Values.postgres.password | quote }}
+          # The same `postgres.password`, expanded by Grafana from the env the Grafana Deployment
+          # takes from the <release>-store-credentials Secret: a literal here would be printed by
+          # `kubectl get configmap -o yaml`.
+          password: $FORECAST_STORE_PASSWORD
     {{- else }}
     datasources: []
     {{- end }}

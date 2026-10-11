@@ -59,11 +59,13 @@ grafana:
   configRevision: ""
   env:
     FORECAST_CONFIG_CHECKSUM: '{{ include "timeseries.grafanaConfigChecksum" . }}'
-  # `postgres.password` reaches Grafana as a Secret, not through a ConfigMap that `kubectl get
-  # configmap -o yaml` would print. The plugin's own store password still arrives as the app's
-  # secureJsonData.storePassword; this is the documented FORECAST_STORE_* fallback spelling.
+  # Credentials reach the Grafana process as env from Secrets, never as literals in a ConfigMap:
+  # Grafana expands the `$FORECAST_*` references in the provisioning files (the app and the Postgres
+  # datasource) from this env, and the plugin's `secureJsonData` values resolve through it.
+  # <release>-plugin-credentials carries the plugin's own two tokens.
   envFromSecrets:
     - name: '{{ .Release.Name }}-store-credentials'
+    - name: '{{ .Release.Name }}-plugin-credentials'
   grafana.ini:
     paths:
       plugins: /opt/grafana-plugins

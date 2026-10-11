@@ -24,6 +24,8 @@ data:
           storeUser: {{ .Values.postgres.user | quote }}
           storeSslMode: {{ .Values.postgres.sslMode | quote }}
         secureJsonData:
-          storePassword: {{ .Values.postgres.password | quote }}
+          # Expanded by Grafana from the <release>-store-credentials Secret env, like the app's
+          # storePassword: this file is a ConfigMap a plain `kubectl get` prints.
+          storePassword: $FORECAST_STORE_PASSWORD
         {{- end }}
 {{- end }}
