@@ -11,7 +11,7 @@
 | `charts/timeseries/charts/` | Grafana community subchart (fetched, gitignored) |
 | `ci/values.yaml` | Dummy broker URLs and an enabled `compute` block for `helm lint` / `helm template` |
 
-Plugin and worker git pins are `ARG` defaults in the Dockerfiles (`PLUGIN_REF=dd07e9c5b258527ef8f1c768a7956f9ab7541aa9` in both `docker/grafana/` and `docker/compute/`, `BASELINES_REF=a886d144af088851f90eb6d5e519a843ba3b61fe`). They are bumped in the same pass as the sibling change they carry, and CI's `make check-pins` fails when a pin is neither the sibling head nor an ancestor of it.
+Plugin and worker git pins are `ARG` defaults in the Dockerfiles (`PLUGIN_REF=f9fd38e420dba29ee582b965479c4d1dc799272e` in both `docker/grafana/` and `docker/compute/`, `BASELINES_REF=a886d144af088851f90eb6d5e519a843ba3b61fe`). They are bumped in the same pass as the sibling change they carry, and CI's `make check-pins` fails when a pin is neither the sibling head nor an ancestor of it.
 
 ## Cluster data flow
 

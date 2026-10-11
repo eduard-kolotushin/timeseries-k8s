@@ -1,6 +1,6 @@
 # Grafana OSS with the unsigned forecast plugin, grafadruid-druid-datasource, and grafana-opensearch-datasource.
 # Plugin source is fetched from GitHub; it is not copied from a sibling checkout.
-ARG PLUGIN_REF=dd07e9c5b258527ef8f1c768a7956f9ab7541aa9
+ARG PLUGIN_REF=f9fd38e420dba29ee582b965479c4d1dc799272e
 ARG GRAFANA_VERSION=13.1.0
 
 FROM node:22-bookworm AS frontend
