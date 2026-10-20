@@ -61,7 +61,13 @@ Both pins are `ARG` defaults in `docker/grafana/Dockerfile`, `docker/compute/Doc
 - **Fitting scales on its own**: `compute.replicas`, or `kubectl scale deployment/<release>-forecast-compute --replicas=N`. Replicas share one Postgres, and the plugin's `forecast.retrain` claim queue hands each due row to exactly one of them
 - **The compute pods are polite neighbours**: `compute.resources` defaults to requests `100m`/`256Mi` and limits `cpu: 200m`/`2Gi`, so a burst of large fits cannot starve Grafana, the datasources and the store on a shared node. A fit is CPU-bound, so the limit throttles the service rather than the caller: measured on docker-desktop, a 100k-point fit takes ~0.6 s at 200m against ~20 ms unlimited, a saturating storm's `429 forecast: busy` share rises from ~54% to ~79%, and the fit slots stay occupied long enough that a due retrain can meet a full limiter (which it survives: `error: forecast: busy`, no attempt burned, retried on the next tick)
 
-## v1/v2/v3/v4 non-goals
+## v5 must-have
+
+- **Vault PKI mTLS for the compute hop** (plugin v19): `vault.*` values (`enabled`, `addr`, `namespace`, `pkiMount`, `pkiRole`, `pvvRole`, `certTtl`, `serverName`, `clientCn`, `auth.token` / `roleId` / `secretId` / `kubernetesRole`) reach the compute Deployment as `FORECAST_VAULT_*` / `FORECAST_COMPUTE_TLS_SERVER_NAME` env and the Grafana plugin as app `jsonData` / `secureJsonData` (`vaultToken`, `vaultSecretId` as `$VAR` references). `vault.enabled` switches the app's `computeUrl` to `https://<release>-forecast-compute:8080`
+- The service-side `FORECAST_VAULT_TOKEN` / `FORECAST_VAULT_ROLE_ID` / `FORECAST_VAULT_SECRET_ID` live only in `<release>-compute-credentials`, the Grafana-side copies only in `<release>-plugin-credentials`; the CI no-credential render probe covers the Vault secrets too
+- `vault.enabled=false` renders exactly the v4 shape (plain `http` computeUrl, no Vault env). A Vault change rolls Grafana via `grafana.configRevision`, like the other parent-scope blocks
+
+## v1/v2/v3/v4/v5 non-goals
 
 Do not add these without first updating this document:
 
@@ -77,6 +83,8 @@ Do not add these without first updating this document:
 - Compute-service source or a second `POST /forecast` implementation in this repo: the image builds the plugin's own `cmd/compute`, and the chart only deploys it
 - A compute URL the Grafana subchart's `grafana.env` could set: the plugin process does not receive host env (Grafana 12.4+), so the switch is provisioning only
 - Exposing the compute Service outside the cluster (it is ClusterIP, and only the plugin process talks to it)
+- A Vault server, PKI role provisioning, or Vault TLS inside this chart: `vault.*` only points the two halves at an existing Vault, and the operator owns its PKI roles and CA
+- A certificate file source for the compute hop: with `vault.enabled` the certificates are issued from Vault PKI only
 
 ## v2 non-goals
 

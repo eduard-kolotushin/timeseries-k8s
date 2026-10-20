@@ -36,4 +36,31 @@ data:
   {{- with include "timeseries.optional" .Values.compute.snapshotTtl }}
   FORECAST_SNAPSHOT_TTL: {{ . | quote }}
   {{- end }}
+  {{- if .Values.vault.enabled }}
+  # v19 mTLS. The PKI role issues this service's server certificate; the DNS name is both the
+  # certificate's SAN and what the plugin verifies. Credentials come from the Secret.
+  FORECAST_VAULT_ADDR: {{ .Values.vault.addr | quote }}
+  {{- with .Values.vault.namespace }}
+  FORECAST_VAULT_NAMESPACE: {{ . | quote }}
+  {{- end }}
+  FORECAST_VAULT_PKI_MOUNT: {{ .Values.vault.pkiMount | quote }}
+  FORECAST_VAULT_PKI_ROLE: {{ .Values.vault.pkiRole | quote }}
+  {{- with .Values.vault.pvvRole }}
+  FORECAST_VAULT_PKI_PVV_ROLE: {{ . | quote }}
+  {{- end }}
+  FORECAST_VAULT_CERT_TTL: {{ .Values.vault.certTtl | quote }}
+  {{- with .Values.vault.clientCn }}
+  FORECAST_VAULT_CLIENT_CN: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.vault.auth.approleMount }}
+  FORECAST_VAULT_APPROLE_MOUNT: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.vault.auth.kubernetesRole }}
+  FORECAST_VAULT_K8S_ROLE: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.vault.auth.kubernetesMount }}
+  FORECAST_VAULT_K8S_MOUNT: {{ . | quote }}
+  {{- end }}
+  FORECAST_COMPUTE_TLS_SERVER_NAME: {{ .Values.vault.serverName | default (printf "%s-forecast-compute" .Release.Name) | quote }}
+  {{- end }}
 {{- end }}

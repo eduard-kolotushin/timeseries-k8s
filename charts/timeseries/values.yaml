@@ -229,3 +229,35 @@ compute:
     limits:
       cpu: 200m
       memory: 2Gi
+
+# Vault PKI mTLS for the compute hop (plugin v19). Only meaningful with
+# `compute.enabled`. When enabled, the plugin forwards to `https://<release>-forecast-compute:8080`
+# and the compute service listens TLS-only, requiring a client certificate issued by Vault.
+# Certificates are re-issued at half their remaining lifetime; no restart is needed to rotate.
+# Credentials live only in the two existing Secrets (<release>-plugin-credentials and
+# <release>-compute-credentials), never in a ConfigMap.
+vault:
+  enabled: false
+  # Vault address, e.g. https://vault.vault.svc:8200.
+  addr: ""
+  namespace: ""
+  pkiMount: pki
+  # Role the service uses to issue its server certificate, and the client role the plugin uses.
+  # `pkiRole` is required when enabled.
+  pkiRole: ""
+  # Optional: issue the PVV retrain client certificate from this role too.
+  pvvRole: ""
+  certTtl: 24h
+  # DNS name the compute service's certificate is issued for and verified against.
+  # Empty renders <release>-forecast-compute.
+  serverName: ""
+  # Common name the plugin's client certificate is issued with. Empty keeps the plugin default.
+  clientCn: ""
+  # One auth method: token, AppRole (roleId+secretId), or Kubernetes (kubernetesRole).
+  auth:
+    token: ""
+    roleId: ""
+    secretId: ""
+    kubernetesRole: ""
+    kubernetesMount: ""
+    approleMount: ""

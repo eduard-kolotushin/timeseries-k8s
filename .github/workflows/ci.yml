@@ -54,6 +54,18 @@ jobs:
           if echo "$plain" | grep -q 'computeUrl:'; then
             echo "compute.enabled=false still rendered computeUrl" >&2; exit 1
           fi
+          # v19: vault.enabled switches the hop to https and renders the Vault env/jsonData.
+          vout=$(helm template test charts/timeseries -f ci/values.yaml \
+            --set vault.enabled=true \
+            --set vault.addr=https://vault:8200 \
+            --set vault.pkiRole=forecast-compute \
+            --set vault.auth.token=vtoken)
+          echo "$vout" | grep -q 'computeUrl: "https://test-forecast-compute:8080"'
+          echo "$vout" | grep -q 'computeTlsServerName: "test-forecast-compute"'
+          echo "$vout" | grep -q 'vaultToken: \$FORECAST_VAULT_TOKEN'
+          echo "$vout" | grep -q 'FORECAST_VAULT_ADDR: "https://vault:8200"'
+          echo "$vout" | grep -q 'FORECAST_VAULT_PKI_ROLE: "forecast-compute"'
+          echo "$vout" | grep -q 'FORECAST_COMPUTE_TLS_SERVER_NAME: "test-forecast-compute"'
       - name: Render a URL-less install
         # The subchart's datasource ConfigMap mounts are unconditional, so an `optional: true` mount
         # of a ConfigMap that does not exist becomes a *directory* at the file path and Grafana
@@ -73,11 +85,11 @@ jobs:
         # reference and no value, and the Secrets must contain the values.
         run: |
           set -e
-          probe_args='--set postgres.url=postgres://u:p@h.example:5432/db --set postgres.password=PROBEPW1 --set grafana.pluginToken=PROBETOK2 --set compute.token=PROBETOK3'
+          probe_args='--set postgres.url=postgres://u:p@h.example:5432/db --set postgres.password=PROBEPW1 --set grafana.pluginToken=PROBETOK2 --set compute.token=PROBETOK3 --set vault.enabled=true --set vault.addr=https://vault:8200 --set vault.pkiRole=forecast-compute --set vault.auth.token=PROBEVAULT4'
           for f in forecast-app postgres-datasource forecast-datasource; do
             rendered=$(helm template test charts/timeseries -f ci/values.yaml $probe_args \
               --show-only "templates/$f-configmap.yaml")
-            if echo "$rendered" | grep -q 'PROBEPW1\|PROBETOK2\|PROBETOK3'; then
+            if echo "$rendered" | grep -q 'PROBEPW1\|PROBETOK2\|PROBETOK3\|PROBEVAULT4'; then
               echo "$f renders a credential literal" >&2; exit 1
             fi
             echo "$rendered" | grep -q '\$FORECAST_' || {
@@ -85,8 +97,9 @@ jobs:
           done
           secrets=$(helm template test charts/timeseries -f ci/values.yaml $probe_args \
             --show-only templates/plugin-credentials.yaml \
+            --show-only templates/compute-credentials.yaml \
             --show-only templates/store-credentials.yaml)
-          for v in PROBEPW1 PROBETOK2 PROBETOK3; do
+          for v in PROBEPW1 PROBETOK2 PROBETOK3 PROBEVAULT4; do
             echo "$secrets" | grep -q "$(printf '%s' "$v" | base64 -w0)" || {
               echo "$v is in no Secret" >&2; exit 1; }
           done

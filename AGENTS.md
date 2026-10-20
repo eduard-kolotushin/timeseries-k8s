@@ -19,7 +19,7 @@ Kubernetes images and Helm for the forecast Grafana plugin and the baselines wor
 
 - Do not copy plugin, worker, or compute source into this repo; Dockerfiles fetch pinned sibling git refs
 - Do not add Kafka, Druid, Prometheus, OpenSearch, or Postgres **servers**, TestData, or sandbox dashboards
-- Stay within v1/v2/v3/v4 unless `docs/INTENTIONS.md` is updated first
+- Stay within v1/v2/v3/v4/v5 unless `docs/INTENTIONS.md` is updated first
 - linux/amd64 only
 - Unsigned plugin load via `allow_loading_unsigned_plugins`, not `GF_DEFAULT_APP_MODE=development`
 - Worker is a Deployment of its own; its replicas are independent of Grafana replicas
@@ -41,7 +41,11 @@ Bounded worker Druid access (`baselines.druidMaxRange` / `druidMaxRps` / `trainC
 
 The plugin's standalone compute service (v16): `docker/compute/Dockerfile` + `make docker-compute` + the `v*` tag image job + `check-pins`, and `compute.*` values rendering a Deployment (`<release>-forecast-compute`, `compute.replicas`), a ported ClusterIP Service on 8080, an env ConfigMap (`FORECAST_COMPUTE_LISTEN`, a Grafana URL defaulting to `http://<release>-grafana:80`, optional inflight/retrain/TTL knobs), a `<release>-compute-credentials` Secret (`compute.token` required) as the service-side copy of the token, and the shared store ConfigMap/Secret. `compute.enabled` also adds `computeUrl`/`computeToken` to the app provisioning ConfigMap — the only switch that reaches the plugin process — which then forwards `POST /forecast` and runs no retrain ticker. No credential is rendered into a ConfigMap: the app's and the datasources' `secureJsonData` values are `$VAR` references Grafana expands from its process env, which the Grafana pod takes from the `<release>-store-credentials` and `<release>-plugin-credentials` (`FORECAST_GRAFANA_TOKEN` / `FORECAST_COMPUTE_TOKEN`) Secrets, and a CI render checks that with probe values. Default off; a compute change needs `grafana.configRevision` bumped to roll Grafana.
 
-## v1/v2/v3/v4 out of scope
+## v5 in scope
+
+Vault PKI mTLS for the compute hop (`vault.*` values, `https` computeUrl, Vault env in ConfigMaps, credentials only in Secrets, CI render checks).
+
+## v1/v2/v3/v4/v5 out of scope
 
 Plugin implementation, worker implementation, compute-service implementation, Compose sandbox, Prometheus/OpenSearch/Postgres servers in this chart, grafana.com signing, arm64, worker HTTP probes (the compute service's coarse `/healthz` is the named exception), Kafka/Druid in this chart, worker leader election or coordinator, service mesh, HPA tuning, worker HTTP endpoint, a compute Service exposed outside the cluster, and a compute switch through `grafana.env` (provisioning only — Grafana does not forward host env to plugin processes).
 
