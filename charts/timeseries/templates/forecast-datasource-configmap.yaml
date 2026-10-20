@@ -23,6 +23,21 @@ data:
           storeDatabase: {{ .Values.postgres.database | quote }}
           storeUser: {{ .Values.postgres.user | quote }}
           storeSslMode: {{ .Values.postgres.sslMode | quote }}
+          {{- if ne (toString .Values.postgres.mtls) "" }}
+          storeMtls: {{ .Values.postgres.mtls | quote }}
+          {{- end }}
+          {{- with .Values.postgres.clientCertFile }}
+          storeClientCert: {{ . | quote }}
+          {{- end }}
+          {{- with .Values.postgres.clientKeyFile }}
+          storeClientKey: {{ . | quote }}
+          {{- end }}
+          {{- with .Values.postgres.caCertFile }}
+          storeCaCert: {{ . | quote }}
+          {{- end }}
+          {{- with .Values.postgres.tlsServerName }}
+          storeTlsServerName: {{ . | quote }}
+          {{- end }}
         secureJsonData:
           # Expanded by Grafana from the <release>-store-credentials Secret env, like the app's
           # storePassword: this file is a ConfigMap a plain `kubectl get` prints.

@@ -97,7 +97,7 @@ instead of silently fitting inside Grafana. The rest of the compute knobs are re
   --set compute.retrainCron='*/15 * * * *' # default 0 3 * * *
   --set compute.snapshotTtl=72h            # retention window; 0 disables
 
-Vault PKI mTLS is optional and independent per component (plugin v19-v21). Point both halves at an
+Vault PKI mTLS is optional and independent per component (plugin v19-v22). Point both halves at an
 existing Vault; the chart renders the env/jsonData but never a certificate:
 
   --set vault.enabled=true
@@ -106,11 +106,25 @@ existing Vault; the chart renders the env/jsonData but never a certificate:
   --set vault.serverName={{ .Release.Name }}-forecast-compute
   --set vault.auth.kubernetesRole=forecast-k8s   # or vault.auth.token / roleId+secretId
 
-The switches are `FORECAST_COMPUTE_MTLS` / `_PVV_MTLS` / `_STORE_MTLS`; unset means "that role is set",
-explicit false keeps that hop plain (Istio). For a Vault listener that requires a client certificate
-(v21), set `vault.mtls=true` and `vault.clientCertFile` / `vault.clientKeyFile` to paths, then mount one
-Secret into both pods with `compute.extraVolumes`/`compute.extraVolumeMounts` and
-`grafana.extraVolumes`/`grafana.extraVolumeMounts`. Certificate values are paths, never PEM content.
+Without Vault, mount a local pair and select it with the same switches (v22):
+
+  --set compute.mtls=true
+  --set compute.clientCertFile=/certs/compute.crt   # plugin → compute
+  --set compute.clientKeyFile=/certs/compute.key
+  --set compute.caCertFile=/certs/ca.pem
+  --set compute.serverCertFile=/certs/server.crt    # compute listener
+  --set compute.serverKeyFile=/certs/server.key
+  --set postgres.mtls=true
+  --set postgres.clientCertFile=/certs/store.crt    # plugin/compute → Postgres
+  --set postgres.clientKeyFile=/certs/store.key
+  --set postgres.caCertFile=/certs/ca.pem
+
+The switches are `FORECAST_COMPUTE_MTLS` / `_PVV_MTLS` / `_STORE_MTLS`; unset means "that role or local
+pair is set", explicit false keeps that hop plain (Istio). A Vault role wins when both sources are set.
+For a Vault listener that requires a client certificate (v21), set `vault.mtls=true` and
+`vault.clientCertFile` / `vault.clientKeyFile` to paths, then mount one Secret into both pods with
+`compute.extraVolumes`/`compute.extraVolumeMounts` and `grafana.extraVolumes`/`grafana.extraVolumeMounts`.
+The same mounts carry the v22 local pairs. Certificate values are paths, never PEM content.
 
 Images must exist before pods can start. Publish both images to GHCR by pushing a v* git tag, or build locally:
 

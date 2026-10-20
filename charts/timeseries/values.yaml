@@ -17,6 +17,14 @@ postgres:
   user: ""
   password: ""
   sslMode: disable
+  # Store mTLS without Vault (plugin v22). Set `mtls: true` and mount a client pair; the plugin
+  # and the compute service present it to Postgres. A configured Vault store role still wins.
+  # `caCertFile` is optional (system roots when empty); `tlsServerName` overrides the DSN host.
+  mtls: ""
+  clientCertFile: ""
+  clientKeyFile: ""
+  caCertFile: ""
+  tlsServerName: ""
 
 grafana:
   enabled: true
@@ -216,7 +224,21 @@ compute:
   retrainLease: ""
   retrainRetryMax: ""
   snapshotTtl: ""
-  # Optional mounts for files the service needs, e.g. the v21 Vault client certificate pair.
+  # Compute mTLS without Vault (plugin v22). `mtls: true` makes the plugin forward over https and
+  # the service listen TLS-only; the plugin presents `clientCertFile`/`clientKeyFile`, the service
+  # presents `serverCertFile`/`serverKeyFile` and verifies clients with `caCertFile`. Mount the files
+  # with `extraVolumes`/`extraVolumeMounts` (service) and `grafana.extraVolumes`/`extraVolumeMounts`
+  # (plugin). A configured Vault compute role still wins over files. Empty `tlsServerName` uses
+  # `<release>-forecast-compute` for a local pair and `vault.serverName` for a Vault role.
+  mtls: ""
+  clientCertFile: ""
+  clientKeyFile: ""
+  caCertFile: ""
+  serverCertFile: ""
+  serverKeyFile: ""
+  tlsServerName: ""
+  # Optional mounts for files the service needs, e.g. the v21 Vault client certificate pair or the
+  # v22 local compute/server pair.
   extraVolumes: []
   extraVolumeMounts: []
   # CPU limit 200m: a fit is CPU-bound, so this is what keeps a burst of large fits from starving
@@ -233,10 +255,11 @@ compute:
       cpu: 200m
       memory: 2Gi
 
-# Vault PKI mTLS for the compute hop and optional client certificates (plugin v19-v21). Only
+# Vault PKI mTLS for the compute hop and optional client certificates (plugin v19-v22). Only
 # meaningful with `compute.enabled`. When enabled, the plugin forwards to `https://<release>-forecast-compute:8080`
 # and the compute service listens TLS-only, requiring a client certificate issued by Vault.
 # Certificates are re-issued at half their remaining lifetime; no restart is needed to rotate.
+# Local file pairs under `compute.*` / `postgres.*` select the same switches without Vault.
 # Credentials live only in the two existing Secrets (<release>-plugin-credentials and
 # <release>-compute-credentials), never in a ConfigMap.
 vault:

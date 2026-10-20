@@ -17,4 +17,19 @@ data:
   # with `kubectl get configmap -o yaml`. Grafana 12.4+ does not forward host env into plugin
   # processes either, so the plugin's live configuration is the app's secureJsonData.storePassword.
   FORECAST_STORE_SSLMODE: {{ .Values.postgres.sslMode | quote }}
+  {{- if ne (toString .Values.postgres.mtls) "" }}
+  FORECAST_STORE_MTLS: {{ .Values.postgres.mtls | quote }}
+  {{- end }}
+  {{- with .Values.postgres.clientCertFile }}
+  FORECAST_STORE_CLIENT_CERT: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.postgres.clientKeyFile }}
+  FORECAST_STORE_CLIENT_KEY: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.postgres.caCertFile }}
+  FORECAST_STORE_CA_CERT: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.postgres.tlsServerName }}
+  FORECAST_STORE_TLS_SERVER_NAME: {{ . | quote }}
+  {{- end }}
 {{- end }}

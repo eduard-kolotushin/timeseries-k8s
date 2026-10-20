@@ -3,6 +3,9 @@
 {{- if and (not $grafanaUrl) .Values.grafana.enabled }}
 {{- $grafanaUrl = printf "http://%s-grafana:80" .Release.Name }}
 {{- end }}
+{{- $mtls := toString .Values.compute.mtls }}
+{{- $computeTLS := and (ne $mtls "false") (or .Values.vault.enabled (ne $mtls "") .Values.compute.clientCertFile .Values.compute.serverCertFile) }}
+{{- $serverName := .Values.compute.tlsServerName | default .Values.vault.serverName | default (printf "%s-forecast-compute" .Release.Name) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -36,6 +39,27 @@ data:
   {{- with include "timeseries.optional" .Values.compute.snapshotTtl }}
   FORECAST_SNAPSHOT_TTL: {{ . | quote }}
   {{- end }}
+  {{- if $computeTLS }}
+  FORECAST_COMPUTE_TLS_SERVER_NAME: {{ $serverName | quote }}
+  {{- end }}
+  {{- if ne (toString .Values.compute.mtls) "" }}
+  FORECAST_COMPUTE_MTLS: {{ .Values.compute.mtls | quote }}
+  {{- end }}
+  {{- with .Values.compute.clientCertFile }}
+  FORECAST_COMPUTE_CLIENT_CERT: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.compute.clientKeyFile }}
+  FORECAST_COMPUTE_CLIENT_KEY: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.compute.caCertFile }}
+  FORECAST_COMPUTE_CA_CERT: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.compute.serverCertFile }}
+  FORECAST_COMPUTE_SERVER_CERT: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.compute.serverKeyFile }}
+  FORECAST_COMPUTE_SERVER_KEY: {{ . | quote }}
+  {{- end }}
   {{- if .Values.vault.enabled }}
   # v19-v21 mTLS. The PKI role issues this service's server certificate; the DNS name is both the
   # certificate's SAN and what the plugin verifies. Credentials come from the Secret.
@@ -58,8 +82,8 @@ data:
   {{- with .Values.vault.clientKeyFile }}
   FORECAST_VAULT_CLIENT_KEY: {{ . | quote }}
   {{- end }}
-  {{- with .Values.vault.mtls }}
-  FORECAST_VAULT_MTLS: {{ . | quote }}
+  {{- if ne (toString .Values.vault.mtls) "" }}
+  FORECAST_VAULT_MTLS: {{ .Values.vault.mtls | quote }}
   {{- end }}
   {{- with .Values.vault.auth.approleMount }}
   FORECAST_VAULT_APPROLE_MOUNT: {{ . | quote }}
@@ -70,6 +94,5 @@ data:
   {{- with .Values.vault.auth.kubernetesMount }}
   FORECAST_VAULT_K8S_MOUNT: {{ . | quote }}
   {{- end }}
-  FORECAST_COMPUTE_TLS_SERVER_NAME: {{ .Values.vault.serverName | default (printf "%s-forecast-compute" .Release.Name) | quote }}
   {{- end }}
 {{- end }}

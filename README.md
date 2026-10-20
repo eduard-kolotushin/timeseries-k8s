@@ -11,7 +11,7 @@ See [docs/INTENTIONS.md](docs/INTENTIONS.md) and [docs/ARCHITECTURE.md](docs/ARC
 - Grafana 13.1 with the unsigned forecast app, overlay panel, and forecast datasource, the Druid datasource plugin, and the OpenSearch datasource plugin baked in
 - Optional baselines worker Deployment (minute-of-week fit to Kafka), scaled independently of Grafana
 - Optional forecast compute Deployment (`compute.enabled`, v16) that owns fitting and the retrain ticker when enabled
-- Optional Vault PKI mTLS for the plugin→compute hop, PVV, Postgres store and Vault itself (`vault.*`, plugin v19–v21); Vault is external
+- Optional Vault PKI or local-file mTLS for the plugin→compute hop, PVV, Postgres store and Vault itself (`vault.*`, `compute.mtls*`, `postgres.mtls*`, plugin v19–v22); Vault is external
 
 Kafka, Druid, Prometheus, OpenSearch, and Postgres must already exist if you want those datasources. Pass URLs in values. This chart does not run those servers. A full local stack is sibling [`timeseries-grafana-sandbox`](../timeseries-grafana-sandbox) `make helm-up`.
 
@@ -71,9 +71,9 @@ kubectl -n <ns> scale deployment/timeseries-forecast-compute --replicas=4
 
 The pod is distroless (no shell); `/forecast` and `/ping` need the bearer token, `/healthz` is the coarse unauthenticated probe.
 
-## Vault PKI mTLS
+## mTLS: Vault PKI or local files
 
-`vault.enabled=true` points the compute hop at Vault PKI (`vault.addr`, `pkiMount`, `pkiRole`, `certTtl`, `serverName`, `clientCn`, `auth.*`) and switches `computeUrl` to `https`. The per-component switches are `FORECAST_COMPUTE_MTLS` / `_PVV_MTLS` / `_STORE_MTLS`; unset means "that role is configured", explicit `false` keeps that hop plain (Istio shape). v21 adds `vault.mtls` with file paths `vault.clientCertFile` / `vault.clientKeyFile` for a Vault listener that requires a client certificate. The chart renders the paths but does not create the Secret: mount it into both Grafana and compute pods with `grafana.extraVolumes` / `compute.extraVolumes` (and the matching `extraVolumeMounts`). Certificate values are paths, never PEM content.
+`vault.enabled=true` points the compute hop at Vault PKI (`vault.addr`, `pkiMount`, `pkiRole`, `certTtl`, `serverName`, `clientCn`, `auth.*`) and switches `computeUrl` to `https`. The per-component switches are `FORECAST_COMPUTE_MTLS` / `_PVV_MTLS` / `_STORE_MTLS`; unset means "that role or a local certificate pair is configured", explicit `false` keeps that hop plain (Istio shape). v21 adds `vault.mtls` with file paths `vault.clientCertFile` / `vault.clientKeyFile` for a Vault listener that requires a client certificate. v22 adds local files instead of Vault: `compute.mtls` + `compute.clientCertFile` / `clientKeyFile` / `caCertFile` / `serverCertFile` / `serverKeyFile` / `tlsServerName`, and `postgres.mtls` + `postgres.clientCertFile` / `clientKeyFile` / `caCertFile` / `tlsServerName`; the chart renders paths and env/jsonData but creates no Secret. Mount the files into the Grafana and compute pods with `grafana.extraVolumes` / `compute.extraVolumes` (and the matching `extraVolumeMounts`). A Vault role wins when both are set. Certificate values are paths, never PEM content.
 
 ## Scale the worker
 

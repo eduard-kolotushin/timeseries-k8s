@@ -66,6 +66,40 @@ jobs:
           echo "$vout" | grep -q 'FORECAST_VAULT_ADDR: "https://vault:8200"'
           echo "$vout" | grep -q 'FORECAST_VAULT_PKI_ROLE: "forecast-compute"'
           echo "$vout" | grep -q 'FORECAST_COMPUTE_TLS_SERVER_NAME: "test-forecast-compute"'
+      - name: Render local certificate mTLS
+        # v22: local files select the same switches without Vault. The render must switch computeUrl
+        # to https, carry the compute/server and store pairs, and keep an explicit false false.
+        run: |
+          out=$(helm template test charts/timeseries -f ci/values.yaml \
+            --set postgres.url=pg.example \
+            --set compute.mtls=true \
+            --set compute.clientCertFile=/certs/compute.crt \
+            --set compute.clientKeyFile=/certs/compute.key \
+            --set compute.caCertFile=/certs/ca.pem \
+            --set compute.serverCertFile=/certs/server.crt \
+            --set compute.serverKeyFile=/certs/server.key \
+            --set postgres.mtls=true \
+            --set postgres.clientCertFile=/certs/store.crt \
+            --set postgres.clientKeyFile=/certs/store.key \
+            --set postgres.caCertFile=/certs/ca.pem \
+            --set postgres.tlsServerName=pg.example)
+          echo "$out" | grep -q 'computeUrl: "https://test-forecast-compute:8080"'
+          echo "$out" | grep -q 'computeMtls: "true"'
+          echo "$out" | grep -q 'computeClientCert: "/certs/compute.crt"'
+          echo "$out" | grep -q 'FORECAST_COMPUTE_MTLS: "true"'
+          echo "$out" | grep -q 'FORECAST_COMPUTE_SERVER_CERT: "/certs/server.crt"'
+          echo "$out" | grep -q 'FORECAST_STORE_MTLS: "true"'
+          echo "$out" | grep -q 'storeClientCert: "/certs/store.crt"'
+          echo "$out" | grep -q 'storeMtls: "true"'
+          echo "$out" | grep -q 'FORECAST_STORE_TLS_SERVER_NAME: "pg.example"'
+          off=$(helm template test charts/timeseries -f ci/values.yaml \
+            --set compute.mtls=false \
+            --set compute.clientCertFile=/certs/compute.crt \
+            --set compute.clientKeyFile=/certs/compute.key \
+            --set compute.serverCertFile=/certs/server.crt \
+            --set compute.serverKeyFile=/certs/server.key)
+          echo "$off" | grep -q 'computeUrl: "http://test-forecast-compute:8080"'
+          echo "$off" | grep -q 'FORECAST_COMPUTE_MTLS: "false"'
       - name: Render a URL-less install
         # The subchart's datasource ConfigMap mounts are unconditional, so an `optional: true` mount
         # of a ConfigMap that does not exist becomes a *directory* at the file path and Grafana

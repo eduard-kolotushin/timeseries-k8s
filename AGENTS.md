@@ -43,7 +43,7 @@ The plugin's standalone compute service (v16): `docker/compute/Dockerfile` + `ma
 
 ## v5 in scope
 
-Vault PKI mTLS for the compute hop (`vault.*` values, `https` computeUrl, Vault env in ConfigMaps, credentials only in Secrets, CI render checks). v21 adds selectable Vault API client-certificate mTLS (`vault.mtls` / `clientCertFile` / `clientKeyFile`, plus `compute.extraVolumes`/`extraVolumeMounts`; the operator mounts the file pair, the chart only renders paths and env/jsonData).
+Vault PKI mTLS for the compute hop (`vault.*` values, `https` computeUrl, Vault env in ConfigMaps, credentials only in Secrets, CI render checks). v21 adds selectable Vault API client-certificate mTLS (`vault.mtls` / `clientCertFile` / `clientKeyFile`, plus `compute.extraVolumes`/`extraVolumeMounts`; the operator mounts the file pair, the chart only renders paths and env/jsonData). v22 adds local file certificates for the compute hop and store: `compute.mtls` / `clientCertFile` / `clientKeyFile` / `caCertFile` / `serverCertFile` / `serverKeyFile` / `tlsServerName` and `postgres.mtls` / `clientCertFile` / `clientKeyFile` / `caCertFile` / `tlsServerName`, rendered into the compute/store ConfigMaps and app/datasource provisioning; the operator mounts the files, and a Vault role wins when both are configured.
 
 ## v1/v2/v3/v4/v5 out of scope
 

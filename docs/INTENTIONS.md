@@ -18,7 +18,7 @@ Deploy the forecast Grafana plugin and the minute-of-week baselines worker on an
 | Images | linux/amd64; GHCR `ghcr.io/eduard-kolotushin/timeseries-grafana`, `…/timeseries-baselines` and `…/timeseries-forecast-compute` |
 | Plugin load | `GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS` (not development mode, not grafana.com signing) |
 | Auth | Grafana Helm admin secret; no anonymous Admin (sandbox values may override) |
-| Source pins | Dockerfiles clone sibling git (plugin `7ba0df3d79c0d08a1d9a1451df02b5da5f837f67` — `docker/grafana/Dockerfile` and `docker/compute/Dockerfile` —, worker `a886d144af088851f90eb6d5e519a843ba3b61fe`) |
+| Source pins | Dockerfiles clone sibling git (plugin `088bb51caf3e124f02bb98d2f1c7a999ec13f91f` — `docker/grafana/Dockerfile` and `docker/compute/Dockerfile` —, worker `df2a8b6d37ae59cd06cb4519900d81560f28601f`) |
 
 Both pins are `ARG` defaults in `docker/grafana/Dockerfile`, `docker/compute/Dockerfile` and
 `docker/baselines/Dockerfile`, and they are bumped in the same pass as the sibling change they carry;
@@ -65,8 +65,9 @@ Both pins are `ARG` defaults in `docker/grafana/Dockerfile`, `docker/compute/Doc
 
 - **Vault PKI mTLS for the compute hop** (plugin v19): `vault.*` values (`enabled`, `addr`, `namespace`, `pkiMount`, `pkiRole`, `pvvRole`, `certTtl`, `serverName`, `clientCn`, `auth.token` / `roleId` / `secretId` / `kubernetesRole`) reach the compute Deployment as `FORECAST_VAULT_*` / `FORECAST_COMPUTE_TLS_SERVER_NAME` env and the Grafana plugin as app `jsonData` / `secureJsonData` (`vaultToken`, `vaultSecretId` as `$VAR` references). `vault.enabled` switches the app's `computeUrl` to `https://<release>-forecast-compute:8080`
 - The service-side `FORECAST_VAULT_TOKEN` / `FORECAST_VAULT_ROLE_ID` / `FORECAST_VAULT_SECRET_ID` live only in `<release>-compute-credentials`, the Grafana-side copies only in `<release>-plugin-credentials`; the CI no-credential render probe covers the Vault secrets too
-- `vault.enabled=false` renders exactly the v4 shape (plain `http` computeUrl, no Vault env). A Vault change rolls Grafana via `grafana.configRevision`, like the other parent-scope blocks
-- **Vault client-certificate mTLS** (plugin v21): `vault.mtls` / `vault.clientCertFile` / `vault.clientKeyFile` render `FORECAST_VAULT_MTLS` / `_CLIENT_CERT` / `_CLIENT_KEY` in the compute env ConfigMap and the matching app `jsonData` (`vaultMtls`, `vaultClientCert`, `vaultClientKey`). The chart does not create or mount the file pair; `compute.extraVolumes` / `compute.extraVolumeMounts` and the Grafana subchart's `grafana.extraVolumes` / `grafana.extraVolumeMounts` let the operator mount one Secret into both pods. The paths are not credentials, so the no-credential ConfigMap rule is unchanged
+- A chart with neither `vault.enabled` nor `compute.mtls` / local compute paths renders the plain `http` computeUrl and no TLS env; a store with no `postgres.mtls` and no local store paths renders exactly the v4 plain store shape. A Vault or local-pair change rolls Grafana via `grafana.configRevision`, like the other parent-scope blocks.
+- **Vault client-certificate mTLS** (plugin v21): `vault.mtls` / `vault.clientCertFile` / `vault.clientKeyFile` render `FORECAST_VAULT_MTLS` / `_CLIENT_CERT` / `_CLIENT_KEY` in the compute env ConfigMap and the matching app `jsonData` (`vaultMtls`, `vaultClientCert`, `vaultClientKey`). The chart does not create or mount the file pair; `compute.extraVolumes` / `compute.extraVolumeMounts` and the Grafana subchart's `grafana.extraVolumes` / `grafana.extraVolumeMounts` let the operator mount one Secret into both pods. The paths are not credentials, so the no-credential ConfigMap rule is unchanged.
+- **Local file certificates** (plugin v22): `compute.mtls` / `clientCertFile` / `clientKeyFile` / `caCertFile` / `serverCertFile` / `serverKeyFile` and `postgres.mtls` / `clientCertFile` / `clientKeyFile` / `caCertFile` / `tlsServerName` render the matching `FORECAST_COMPUTE_*` / `FORECAST_STORE_*` env in the compute and store ConfigMaps and the app/datasource provisioning jsonData, with `computeUrl` switched to `https` when either Vault or the local pair is configured. The chart does not create the files; `compute.extraVolumes` / `extraVolumeMounts` and `grafana.extraVolumes` mount them into the compute and Grafana pods. A Vault role wins when both sources are set; explicit `false` disables a component. Paths are not credentials, so the no-credential ConfigMap rule is unchanged.
 
 ## v1/v2/v3/v4/v5 non-goals
 
@@ -84,8 +85,7 @@ Do not add these without first updating this document:
 - Compute-service source or a second `POST /forecast` implementation in this repo: the image builds the plugin's own `cmd/compute`, and the chart only deploys it
 - A compute URL the Grafana subchart's `grafana.env` could set: the plugin process does not receive host env (Grafana 12.4+), so the switch is provisioning only
 - Exposing the compute Service outside the cluster (it is ClusterIP, and only the plugin process talks to it)
-- A Vault server, PKI role provisioning, or Vault TLS inside this chart: `vault.*` only points the two halves at an existing Vault, and the operator owns its PKI roles and CA
-- A certificate file source for the compute hop: with `vault.enabled` the certificates are issued from Vault PKI only
+- A Vault server, PKI role provisioning, or Vault TLS inside this chart: `vault.*` only points the two halves at an existing Vault, and the operator owns its PKI roles and CA. A local file pair is mounted by the operator; the chart renders paths only.
 
 ## v2 non-goals
 

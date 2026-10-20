@@ -23,17 +23,52 @@ data:
           storeDatabase: {{ .Values.postgres.database | quote }}
           storeUser: {{ .Values.postgres.user | quote }}
           storeSslMode: {{ .Values.postgres.sslMode | quote }}
+          {{- if ne (toString .Values.postgres.mtls) "" }}
+          storeMtls: {{ .Values.postgres.mtls | quote }}
+          {{- end }}
+          {{- with .Values.postgres.clientCertFile }}
+          storeClientCert: {{ . | quote }}
+          {{- end }}
+          {{- with .Values.postgres.clientKeyFile }}
+          storeClientKey: {{ . | quote }}
+          {{- end }}
+          {{- with .Values.postgres.caCertFile }}
+          storeCaCert: {{ . | quote }}
+          {{- end }}
+          {{- with .Values.postgres.tlsServerName }}
+          storeTlsServerName: {{ . | quote }}
+          {{- end }}
           {{- end }}
           {{- if .Values.grafana.retrainCron }}
           retrainCron: {{ .Values.grafana.retrainCron | quote }}
           {{- end }}
           {{- if .Values.compute.enabled }}
           # v16: fitting and the retrain ticker run in the compute Deployment, so this process
-          # forwards every POST /forecast to it and starts no ticker. Rendered here (not through
+          # forwards every POST /forecast to it and starts no retrain ticker. Rendered here (not through
           # `grafana.env`) because the Grafana subchart's value scope cannot see `compute.*`.
-          {{- if .Values.vault.enabled }}
-          # v19-v21: the hop is mTLS; the service listens TLS-only with a Vault-issued certificate.
+          {{- $mtls := toString .Values.compute.mtls }}
+          {{- $computeTLS := and (ne $mtls "false") (or .Values.vault.enabled (ne $mtls "") .Values.compute.clientCertFile .Values.compute.serverCertFile) }}
+          {{- $serverName := .Values.compute.tlsServerName | default .Values.vault.serverName | default (printf "%s-forecast-compute" .Release.Name) }}
+          {{- if $computeTLS }}
+          # v19-v22: the hop is mTLS; a Vault role wins over a local pair.
           computeUrl: {{ printf "https://%s-forecast-compute:8080" .Release.Name | quote }}
+          computeTlsServerName: {{ $serverName | quote }}
+          {{- if ne (toString .Values.compute.mtls) "" }}
+          computeMtls: {{ .Values.compute.mtls | quote }}
+          {{- end }}
+          {{- with .Values.compute.clientCertFile }}
+          computeClientCert: {{ . | quote }}
+          {{- end }}
+          {{- with .Values.compute.clientKeyFile }}
+          computeClientKey: {{ . | quote }}
+          {{- end }}
+          {{- with .Values.compute.caCertFile }}
+          computeCaCert: {{ . | quote }}
+          {{- end }}
+          {{- else }}
+          computeUrl: {{ printf "http://%s-forecast-compute:8080" .Release.Name | quote }}
+          {{- end }}
+          {{- if .Values.vault.enabled }}
           vaultAddr: {{ .Values.vault.addr | quote }}
           {{- with .Values.vault.namespace }}
           vaultNamespace: {{ . | quote }}
@@ -53,8 +88,8 @@ data:
           {{- with .Values.vault.clientKeyFile }}
           vaultClientKey: {{ . | quote }}
           {{- end }}
-          {{- with .Values.vault.mtls }}
-          vaultMtls: {{ . | quote }}
+          {{- if ne (toString .Values.vault.mtls) "" }}
+          vaultMtls: {{ .Values.vault.mtls | quote }}
           {{- end }}
           {{- with .Values.vault.auth.roleId }}
           vaultRoleId: {{ . | quote }}
@@ -68,9 +103,6 @@ data:
           {{- with .Values.vault.auth.kubernetesMount }}
           vaultK8sMount: {{ . | quote }}
           {{- end }}
-          computeTlsServerName: {{ .Values.vault.serverName | default (printf "%s-forecast-compute" .Release.Name) | quote }}
-          {{- else }}
-          computeUrl: {{ printf "http://%s-forecast-compute:8080" .Release.Name | quote }}
           {{- end }}
           {{- end }}
         {{- end }}
