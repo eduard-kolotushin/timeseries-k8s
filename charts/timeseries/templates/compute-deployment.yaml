@@ -64,4 +64,12 @@ spec:
             readOnlyRootFilesystem: true
           resources:
             {{- toYaml .Values.compute.resources | nindent 12 }}
+          {{- with .Values.compute.extraVolumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.compute.extraVolumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
 {{- end }}

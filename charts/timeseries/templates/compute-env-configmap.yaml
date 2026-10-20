@@ -52,6 +52,15 @@ data:
   {{- with .Values.vault.clientCn }}
   FORECAST_VAULT_CLIENT_CN: {{ . | quote }}
   {{- end }}
+  {{- with .Values.vault.clientCertFile }}
+  FORECAST_VAULT_CLIENT_CERT: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.vault.clientKeyFile }}
+  FORECAST_VAULT_CLIENT_KEY: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.vault.mtls }}
+  FORECAST_VAULT_MTLS: {{ . | quote }}
+  {{- end }}
   {{- with .Values.vault.auth.approleMount }}
   FORECAST_VAULT_APPROLE_MOUNT: {{ . | quote }}
   {{- end }}

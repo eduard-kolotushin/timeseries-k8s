@@ -47,6 +47,15 @@ data:
           {{- with .Values.vault.clientCn }}
           vaultClientCn: {{ . | quote }}
           {{- end }}
+          {{- with .Values.vault.clientCertFile }}
+          vaultClientCert: {{ . | quote }}
+          {{- end }}
+          {{- with .Values.vault.clientKeyFile }}
+          vaultClientKey: {{ . | quote }}
+          {{- end }}
+          {{- with .Values.vault.mtls }}
+          vaultMtls: {{ . | quote }}
+          {{- end }}
           {{- with .Values.vault.auth.roleId }}
           vaultRoleId: {{ . | quote }}
           {{- end }}

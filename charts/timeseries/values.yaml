@@ -216,6 +216,9 @@ compute:
   retrainLease: ""
   retrainRetryMax: ""
   snapshotTtl: ""
+  # Optional mounts for files the service needs, e.g. the v21 Vault client certificate pair.
+  extraVolumes: []
+  extraVolumeMounts: []
   # CPU limit 200m: a fit is CPU-bound, so this is what keeps a burst of large fits from starving
   # the rest of the node (Grafana, the datasources and the store usually share it). It throttles the
   # service, not the caller: with `maxInflight` slots per pod, throughput becomes roughly
@@ -253,6 +256,12 @@ vault:
   serverName: ""
   # Common name the plugin's client certificate is issued with. Empty keeps the plugin default.
   clientCn: ""
+  # v21: client-certificate mTLS to Vault itself. The files must be mounted into both the Grafana
+  # and compute pods (e.g. with grafana.extraVolumes / compute.extraVolumes); the chart sets the
+  # paths only. Empty mtls leaves the plugin default: on when either path is set.
+  clientCertFile: ""
+  clientKeyFile: ""
+  mtls: ""
   # One auth method: token, AppRole (roleId+secretId), or Kubernetes (kubernetesRole).
   auth:
     token: ""
