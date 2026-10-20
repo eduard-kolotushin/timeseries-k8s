@@ -1,7 +1,7 @@
 # Static compute service for the forecast plugin (v16): the plugin's /forecast handler and retrain
 # ticker, served standalone so fitting capacity scales without Grafana replicas. Source is fetched
 # from GitHub; not copied from a sibling checkout.
-ARG PLUGIN_REF=3f86c15a3476aeaa0445b3c8d7de1d5b2a616792
+ARG PLUGIN_REF=191702d78dc0133e8d66d09e4332dffc1334800e
 
 FROM golang:1.26-bookworm AS build
 ARG PLUGIN_REF
