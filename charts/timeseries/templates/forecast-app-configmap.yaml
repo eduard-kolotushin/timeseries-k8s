@@ -53,9 +53,7 @@ data:
           # v19-v22: the hop is mTLS; a Vault role wins over a local pair.
           computeUrl: {{ printf "https://%s-forecast-compute:8080" .Release.Name | quote }}
           computeTlsServerName: {{ $serverName | quote }}
-          {{- if ne (toString .Values.compute.mtls) "" }}
-          computeMtls: {{ .Values.compute.mtls | quote }}
-          {{- end }}
+          computeMtls: "true"
           {{- with .Values.compute.clientCertFile }}
           computeClientCert: {{ . | quote }}
           {{- end }}
@@ -67,6 +65,9 @@ data:
           {{- end }}
           {{- else }}
           computeUrl: {{ printf "http://%s-forecast-compute:8080" .Release.Name | quote }}
+          {{- if ne $mtls "" }}
+          computeMtls: "false"
+          {{- end }}
           {{- end }}
           {{- if .Values.vault.enabled }}
           vaultAddr: {{ .Values.vault.addr | quote }}

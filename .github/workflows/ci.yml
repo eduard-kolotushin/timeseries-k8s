@@ -100,6 +100,7 @@ jobs:
             --set compute.serverKeyFile=/certs/server.key)
           echo "$off" | grep -q 'computeUrl: "http://test-forecast-compute:8080"'
           echo "$off" | grep -q 'FORECAST_COMPUTE_MTLS: "false"'
+          echo "$off" | grep -q 'computeMtls: "false"'
       - name: Render a URL-less install
         # The subchart's datasource ConfigMap mounts are unconditional, so an `optional: true` mount
         # of a ConfigMap that does not exist becomes a *directory* at the file path and Grafana
