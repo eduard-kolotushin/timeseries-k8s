@@ -10,6 +10,8 @@ See [docs/INTENTIONS.md](docs/INTENTIONS.md) and [docs/ARCHITECTURE.md](docs/ARC
 
 - Grafana 13.1 with the unsigned forecast app, overlay panel, and forecast datasource, the Druid datasource plugin, and the OpenSearch datasource plugin baked in
 - Optional baselines worker Deployment (minute-of-week fit to Kafka), scaled independently of Grafana
+- Optional forecast compute Deployment (`compute.enabled`, v16) that owns fitting and the retrain ticker when enabled
+- Optional Vault PKI mTLS for the plugin→compute hop, PVV, Postgres store and Vault itself (`vault.*`, plugin v19–v21); Vault is external
 
 Kafka, Druid, Prometheus, OpenSearch, and Postgres must already exist if you want those datasources. Pass URLs in values. This chart does not run those servers. A full local stack is sibling [`timeseries-grafana-sandbox`](../timeseries-grafana-sandbox) `make helm-up`.
 
@@ -19,6 +21,7 @@ Kafka, Druid, Prometheus, OpenSearch, and Postgres must already exist if you wan
 | --- | --- |
 | `ghcr.io/eduard-kolotushin/timeseries-grafana` | Grafana OSS + forecast plugin |
 | `ghcr.io/eduard-kolotushin/timeseries-baselines` | Worker binary |
+| `ghcr.io/eduard-kolotushin/timeseries-forecast-compute` | Optional standalone fit/tick service (`cmd/compute`) |
 
 linux/amd64. Tags are published from this repo on `v*` git tags (first `v0.1.0` after a tag push). Until then, build locally:
 
@@ -57,6 +60,20 @@ Port-forward Grafana:
 ```bash
 kubectl port-forward svc/timeseries-grafana 3000:80
 ```
+
+## Optional compute service
+
+`compute.enabled=true` deploys `<release>-forecast-compute` and points the app's `computeUrl` at it; the plugin then forwards `POST /forecast` and runs no ticker. It needs `compute.token`, shares the `postgres.*` store and fetches frames from Grafana's own `/api/ds/query` (`compute.grafanaUrl`, defaulting to `http://<release>-grafana:80`). Scale it independently:
+
+```bash
+kubectl -n <ns> scale deployment/timeseries-forecast-compute --replicas=4
+```
+
+The pod is distroless (no shell); `/forecast` and `/ping` need the bearer token, `/healthz` is the coarse unauthenticated probe.
+
+## Vault PKI mTLS
+
+`vault.enabled=true` points the compute hop at Vault PKI (`vault.addr`, `pkiMount`, `pkiRole`, `certTtl`, `serverName`, `clientCn`, `auth.*`) and switches `computeUrl` to `https`. The per-component switches are `FORECAST_COMPUTE_MTLS` / `_PVV_MTLS` / `_STORE_MTLS`; unset means "that role is configured", explicit `false` keeps that hop plain (Istio shape). v21 adds `vault.mtls` with file paths `vault.clientCertFile` / `vault.clientKeyFile` for a Vault listener that requires a client certificate. The chart renders the paths but does not create the Secret: mount it into both Grafana and compute pods with `grafana.extraVolumes` / `compute.extraVolumes` (and the matching `extraVolumeMounts`). Certificate values are paths, never PEM content.
 
 ## Scale the worker
 

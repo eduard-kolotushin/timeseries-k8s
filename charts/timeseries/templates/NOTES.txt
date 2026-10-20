@@ -97,6 +97,21 @@ instead of silently fitting inside Grafana. The rest of the compute knobs are re
   --set compute.retrainCron='*/15 * * * *' # default 0 3 * * *
   --set compute.snapshotTtl=72h            # retention window; 0 disables
 
+Vault PKI mTLS is optional and independent per component (plugin v19-v21). Point both halves at an
+existing Vault; the chart renders the env/jsonData but never a certificate:
+
+  --set vault.enabled=true
+  --set vault.addr=https://vault.vault.svc:8200
+  --set vault.pkiRole=forecast-compute      # compute server/client cert
+  --set vault.serverName={{ .Release.Name }}-forecast-compute
+  --set vault.auth.kubernetesRole=forecast-k8s   # or vault.auth.token / roleId+secretId
+
+The switches are `FORECAST_COMPUTE_MTLS` / `_PVV_MTLS` / `_STORE_MTLS`; unset means "that role is set",
+explicit false keeps that hop plain (Istio). For a Vault listener that requires a client certificate
+(v21), set `vault.mtls=true` and `vault.clientCertFile` / `vault.clientKeyFile` to paths, then mount one
+Secret into both pods with `compute.extraVolumes`/`compute.extraVolumeMounts` and
+`grafana.extraVolumes`/`grafana.extraVolumeMounts`. Certificate values are paths, never PEM content.
+
 Images must exist before pods can start. Publish both images to GHCR by pushing a v* git tag, or build locally:
 
   make docker-grafana

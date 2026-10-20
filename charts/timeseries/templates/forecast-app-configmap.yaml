@@ -32,7 +32,7 @@ data:
           # forwards every POST /forecast to it and starts no ticker. Rendered here (not through
           # `grafana.env`) because the Grafana subchart's value scope cannot see `compute.*`.
           {{- if .Values.vault.enabled }}
-          # v19: the hop is mTLS; the service listens TLS-only with a Vault-issued certificate.
+          # v19-v21: the hop is mTLS; the service listens TLS-only with a Vault-issued certificate.
           computeUrl: {{ printf "https://%s-forecast-compute:8080" .Release.Name | quote }}
           vaultAddr: {{ .Values.vault.addr | quote }}
           {{- with .Values.vault.namespace }}

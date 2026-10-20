@@ -37,7 +37,7 @@ data:
   FORECAST_SNAPSHOT_TTL: {{ . | quote }}
   {{- end }}
   {{- if .Values.vault.enabled }}
-  # v19 mTLS. The PKI role issues this service's server certificate; the DNS name is both the
+  # v19-v21 mTLS. The PKI role issues this service's server certificate; the DNS name is both the
   # certificate's SAN and what the plugin verifies. Credentials come from the Secret.
   FORECAST_VAULT_ADDR: {{ .Values.vault.addr | quote }}
   {{- with .Values.vault.namespace }}

@@ -233,8 +233,8 @@ compute:
       cpu: 200m
       memory: 2Gi
 
-# Vault PKI mTLS for the compute hop (plugin v19). Only meaningful with
-# `compute.enabled`. When enabled, the plugin forwards to `https://<release>-forecast-compute:8080`
+# Vault PKI mTLS for the compute hop and optional client certificates (plugin v19-v21). Only
+# meaningful with `compute.enabled`. When enabled, the plugin forwards to `https://<release>-forecast-compute:8080`
 # and the compute service listens TLS-only, requiring a client certificate issued by Vault.
 # Certificates are re-issued at half their remaining lifetime; no restart is needed to rotate.
 # Credentials live only in the two existing Secrets (<release>-plugin-credentials and
